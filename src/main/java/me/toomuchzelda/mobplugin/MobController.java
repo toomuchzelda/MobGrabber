@@ -324,16 +324,44 @@ public class MobController implements Listener
 	public static void freeIfControlled(LivingEntity controlled)
 	{
 		Iterator<Entry<Player, ControlledMob>> itel = _controllerMap.entrySet().iterator();
+		boolean found = false;
 		
-		while(itel.hasNext())
+		while(itel.hasNext() && !found)
 		{
 			Entry<Player, ControlledMob> entry = itel.next();
 			
 			if(entry.getValue().getMob() == controlled)
 			{
-				removeControlledEffects(entry.getKey());
+				//removeControlledEffects(entry.getKey());
+				entry.getValue().unMountMob();
+				entry.getValue().removeMount();
 				itel.remove();
-				break;
+				found = true;
+			}
+		}
+	}
+	
+	
+	/**
+	 * @param grabbed
+	 * Remove grabbed effects (dismount and remove pig) without
+	 *  removing from iterator.
+	 */
+	public static void removeEffectsByGrabbed(LivingEntity grabbed)
+	{
+		Iterator<Entry<Player, ControlledMob>> itel = _controllerMap.entrySet().iterator();
+		boolean found = false;
+		
+		while(itel.hasNext() && !found)
+		{
+			Entry<Player, ControlledMob> entry = itel.next();
+			
+			if(entry.getValue().getMob() == grabbed)
+			{
+				//removeControlledEffects(entry.getKey());
+				entry.getValue().unMountMob();
+				entry.getValue().removeMount();
+				found = true;
 			}
 		}
 	}
@@ -450,6 +478,8 @@ public class MobController implements Listener
 				{
 					Bukkit.broadcastMessage("dismounted sneaking in water");
 					freeIfControlled(p);
+					
+					//avoid cancelling event
 					return;
 				}
 			}
@@ -506,7 +536,7 @@ public class MobController implements Listener
 	
 	//Handle logging off grabbers
 	@EventHandler
-	public void onGrabberDisconnect(PlayerQuitEvent event)
+	public void handleDisconnect(PlayerQuitEvent event)
 	{
 		if(_controllerMap.get(event.getPlayer()) != null)
 		{
@@ -516,16 +546,13 @@ public class MobController implements Listener
 			mob.removeMount();
 			_controllerMap.remove(event.getPlayer());
 		}
-		else
+		
+		//grabbing player may also be grabbed
+		if(isControlled(event.getPlayer()))
 		{
-			freeIfControlled(event.getPlayer());
+			//Avoid concurrent modification exceptions by not iterator removing
+			removeEffectsByGrabbed(event.getPlayer());
 		}
+		
 	}
-	
-	//handle logging off grabbed
-//	@EventHandler
-//	public void onGrabbedDisconnect(PlayerQuitEvent event)
-//	{
-//		freeIfControlled(event.getPlayer());
-//	}
 }
