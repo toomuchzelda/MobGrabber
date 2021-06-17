@@ -22,11 +22,10 @@ import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.ExplosionPrimeEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
-import org.bukkit.event.player.PlayerToggleFlightEvent;
-import org.bukkit.event.player.PlayerToggleSneakEvent;
 import org.bukkit.event.vehicle.VehicleExitEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -332,15 +331,12 @@ public class MobController implements Listener
 			
 			if(entry.getValue().getMob() == controlled)
 			{
-				//removeControlledEffects(entry.getKey());
-				entry.getValue().unMountMob();
-				entry.getValue().removeMount();
+				removeControlledEffects(entry.getKey());
 				itel.remove();
 				found = true;
 			}
 		}
 	}
-	
 	
 	/**
 	 * @param grabbed
@@ -366,12 +362,31 @@ public class MobController implements Listener
 		}
 	}
 	
+//	@EventHandler
+//	public void onShift(PlayerToggleSneakEvent event)
+//	{
+//		if(_controllerMap.get(event.getPlayer()) != null)
+//		{
+//			setNotControlling(event.getPlayer());
+//		}
+//	}
+	
 	@EventHandler
-	public void onShift(PlayerToggleSneakEvent event)
+	public void onDropGrabberItem(PlayerDropItemEvent event)
 	{
 		if(_controllerMap.get(event.getPlayer()) != null)
 		{
-			setNotControlling(event.getPlayer());
+			ItemStack dropped = event.getItemDrop().getItemStack().clone();
+			dropped.setAmount(1);
+			
+			if(dropped.equals(_controllerItem))
+			{
+				event.setCancelled(true);
+				String grabbedName = _controllerMap.get(event.getPlayer()).getMob().getName();
+				event.getPlayer().sendMessage("§8Dropped " + grabbedName);
+				setNotControlling(event.getPlayer());
+			}
+			
 		}
 	}
 	
@@ -415,48 +430,6 @@ public class MobController implements Listener
 		return _controllerMap;
 	}
 	
-	/*@EventHandler
-	public void onDismount(EntityDismountEvent event)
-	{
-		if(event.getEntity() instanceof LivingEntity)
-		{
-			LivingEntity livent = (LivingEntity) event.getEntity();
-			if(isControlled(livent))
-			{
-				//just setCancelling doesn't work for some reason. manually dismount and re-mount
-				//event.setCancelled(true);
-				//event.getDismounted().removePassenger(livent);
-				event.getEntity().sendMessage("dismount triggered");
-				event.getDismounted().addPassenger(livent);
-				
-				if(livent instanceof Player)
-				{
-					Player passenger = (Player) livent;
-					
-					PacketContainer passengerPacket = new PacketContainer(PacketType.Play.Server.MOUNT);
-					
-					passengerPacket.getIntegers().write(0, event.getDismounted().getEntityId());
-					int[] passengersField = new int[1];
-					//passengersField[0] = 1;
-					passengersField[0] = passenger.getEntityId();
-					
-					passengerPacket.getIntegerArrays().write(0, passengersField);
-					
-					try
-					{
-						ProtocolLibrary.getProtocolManager().sendServerPacket(passenger, passengerPacket);
-					}
-					catch (InvocationTargetException e)
-					{
-						e.printStackTrace();
-						Bukkit.broadcastMessage("packet sending failed");
-					}
-					passenger.sendMessage("packet sended");
-				}
-			}
-		}
-	}	*/
-	
 	@EventHandler
 	public void vehicleExit(VehicleExitEvent event)
 	{
@@ -464,7 +437,8 @@ public class MobController implements Listener
 		
 		LivingEntity livent = event.getExited();
 		
-		if(!livent.getLocation().getBlock().getBlockData().getMaterial().equals(Material.WATER))
+		//f(!livent.getLocation().getBlock().getBlockData().getMaterial().equals(Material.WATER))
+		if(!livent.isInWater())
 		{
 			Bukkit.broadcastMessage("dsimounted not in water");
 			freeIfControlled(livent);
@@ -489,22 +463,6 @@ public class MobController implements Listener
 			event.setCancelled(true);
 		}
 	}
-	
-	//Only handles non-players
-	/*
-	@EventHandler
-	public void onEntityDismount(EntityDismountEvent event)
-	{
-		Bukkit.broadcastMessage("entity dismount triggered");
-		if(event.getEntity() instanceof LivingEntity)
-		{
-			LivingEntity livent = (LivingEntity) event.getEntity();
-			if(isControlled(livent))
-			{
-				event.setCancelled(true);
-			}
-		}
-	}	*/
 	
 	@EventHandler
 	public void onControlledDeath(EntityDeathEvent event)
@@ -548,9 +506,15 @@ public class MobController implements Listener
 		}
 		
 		//grabbing player may also be grabbed
-		if(isControlled(event.getPlayer()))
+		//problem if they're in water, since vehicleExit does something
+		//so just check for water
+		if(event.getPlayer().isInWater())
 		{
-			//Avoid concurrent modification exceptions by not iterator removing
+			freeIfControlled(event.getPlayer());
+		}
+		else
+		{
+			//only removes if controlled
 			removeEffectsByGrabbed(event.getPlayer());
 		}
 		
