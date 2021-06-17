@@ -24,6 +24,7 @@ import org.bukkit.event.entity.ExplosionPrimeEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerToggleFlightEvent;
 import org.bukkit.event.player.PlayerToggleSneakEvent;
 import org.bukkit.event.vehicle.VehicleExitEvent;
@@ -32,14 +33,12 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
-import org.spigotmc.event.entity.EntityDismountEvent;
 
-//import net.minecraft.server.v1_17_R1.EntityPig;
 import net.minecraft.world.entity.animal.Pig;
-//import net.minecraft.world.entity.animal.*;
 
 /**
  * @author toomuchzelda
+ * 
  *
  */
 public class MobController implements Listener
@@ -319,10 +318,8 @@ public class MobController implements Listener
 	
 	/**
 	 * Basically just if(isControlled(victim)) freeThem();
-	 * <br>
-	 * But I didn't want to iterate over the HashMap twice (once for if statement, second for freeing)
-	 * <br>
-	 * so this method.
+	 *  But I didn't want to iterate over the HashMap twice (once for if statement, second for freeing)
+	 *  so this method.
 	 */
 	public static void freeIfControlled(LivingEntity controlled)
 	{
@@ -338,15 +335,6 @@ public class MobController implements Listener
 				itel.remove();
 				break;
 			}
-		}
-	}
-	
-	@EventHandler
-	public void forceFlying(PlayerToggleFlightEvent event)
-	{
-		if(event.isFlying() == false && isControlled(event.getPlayer()))
-		{
-			event.setCancelled(true);
 		}
 	}
 	
@@ -515,4 +503,29 @@ public class MobController implements Listener
 			freeIfControlled(livent);
 		}
 	}
+	
+	//Handle logging off grabbers
+	@EventHandler
+	public void onGrabberDisconnect(PlayerQuitEvent event)
+	{
+		if(_controllerMap.get(event.getPlayer()) != null)
+		{
+			//setNotControlling(event.getPlayer());
+			ControlledMob mob = _controllerMap.get(event.getPlayer());
+			mob.unMountMob();
+			mob.removeMount();
+			_controllerMap.remove(event.getPlayer());
+		}
+		else
+		{
+			freeIfControlled(event.getPlayer());
+		}
+	}
+	
+	//handle logging off grabbed
+//	@EventHandler
+//	public void onGrabbedDisconnect(PlayerQuitEvent event)
+//	{
+//		freeIfControlled(event.getPlayer());
+//	}
 }

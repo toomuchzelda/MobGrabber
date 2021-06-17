@@ -76,6 +76,7 @@ public class ControlledMob implements Listener
 		if(_mount.getPassengers().size() > 0 &&_mount.getPassengers().get(0).equals(_controlled))
 		{
 			_mount.removePassenger(_controlled);
+			//avoid falling through floors
 			_controlled.teleport(_mount.getLocation().clone().add(0, 0.5, 0));
 		}
 	}

@@ -45,6 +45,7 @@ public final class MobPlugin extends JavaPlugin
 					if(args[0].equals("debug"))
 					{
 						p.sendMessage(MobController.getMap().toString());
+						p.sendMessage("Running PaperMC: " + MobController.isPaperMC);
 					}
 				}
 				
