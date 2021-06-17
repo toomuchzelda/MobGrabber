@@ -1,5 +1,6 @@
 package me.toomuchzelda.mobplugin;
 
+import org.bukkit.Location;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Pig;
@@ -27,7 +28,7 @@ public class ControlledMob implements Listener
 		//if(controlled instanceof Player)
 		//{
 		_mount = (Pig) _controlled.getWorld().spawnEntity(_controlled.getLocation(), EntityType.PIG);
-		_mount.setInvisible(true);
+		//_mount.setInvisible(true);
 		_mount.setBaby();
 		_mount.setAgeLock(true);
 		_mount.setGravity(false);
@@ -76,8 +77,12 @@ public class ControlledMob implements Listener
 		if(_mount.getPassengers().size() > 0 &&_mount.getPassengers().get(0).equals(_controlled))
 		{
 			_mount.removePassenger(_controlled);
-			//avoid falling through floors
-			_controlled.teleport(_mount.getLocation().clone().add(0, 0.5, 0));
+			
+			//avoid falling through floors and reset to grabbed facing position (not mount pig)
+			Location toTele = _mount.getLocation().clone().add(0, 0.5, 0);
+			toTele.setDirection(_controlled.getLocation().getDirection());
+			
+			_controlled.teleport(toTele);
 		}
 	}
 
