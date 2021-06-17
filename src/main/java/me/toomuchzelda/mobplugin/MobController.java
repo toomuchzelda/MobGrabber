@@ -24,6 +24,7 @@ import org.bukkit.event.entity.ExplosionPrimeEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerToggleFlightEvent;
 import org.bukkit.event.player.PlayerToggleSneakEvent;
 import org.bukkit.event.vehicle.VehicleExitEvent;
@@ -32,14 +33,12 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
-import org.spigotmc.event.entity.EntityDismountEvent;
 
-//import net.minecraft.server.v1_17_R1.EntityPig;
 import net.minecraft.world.entity.animal.Pig;
-//import net.minecraft.world.entity.animal.*;
 
 /**
  * @author toomuchzelda
+ * 
  *
  */
 public class MobController implements Listener
@@ -319,34 +318,51 @@ public class MobController implements Listener
 	
 	/**
 	 * Basically just if(isControlled(victim)) freeThem();
-	 * <br>
-	 * But I didn't want to iterate over the HashMap twice (once for if statement, second for freeing)
-	 * <br>
-	 * so this method.
+	 *  But I didn't want to iterate over the HashMap twice (once for if statement, second for freeing)
+	 *  so this method.
 	 */
 	public static void freeIfControlled(LivingEntity controlled)
 	{
 		Iterator<Entry<Player, ControlledMob>> itel = _controllerMap.entrySet().iterator();
+		boolean found = false;
 		
-		while(itel.hasNext())
+		while(itel.hasNext() && !found)
 		{
 			Entry<Player, ControlledMob> entry = itel.next();
 			
 			if(entry.getValue().getMob() == controlled)
 			{
-				removeControlledEffects(entry.getKey());
+				//removeControlledEffects(entry.getKey());
+				entry.getValue().unMountMob();
+				entry.getValue().removeMount();
 				itel.remove();
-				break;
+				found = true;
 			}
 		}
 	}
 	
-	@EventHandler
-	public void forceFlying(PlayerToggleFlightEvent event)
+	
+	/**
+	 * @param grabbed
+	 * Remove grabbed effects (dismount and remove pig) without
+	 *  removing from iterator.
+	 */
+	public static void removeEffectsByGrabbed(LivingEntity grabbed)
 	{
-		if(event.isFlying() == false && isControlled(event.getPlayer()))
+		Iterator<Entry<Player, ControlledMob>> itel = _controllerMap.entrySet().iterator();
+		boolean found = false;
+		
+		while(itel.hasNext() && !found)
 		{
-			event.setCancelled(true);
+			Entry<Player, ControlledMob> entry = itel.next();
+			
+			if(entry.getValue().getMob() == grabbed)
+			{
+				//removeControlledEffects(entry.getKey());
+				entry.getValue().unMountMob();
+				entry.getValue().removeMount();
+				found = true;
+			}
 		}
 	}
 	
@@ -462,6 +478,8 @@ public class MobController implements Listener
 				{
 					Bukkit.broadcastMessage("dismounted sneaking in water");
 					freeIfControlled(p);
+					
+					//avoid cancelling event
 					return;
 				}
 			}
@@ -514,5 +532,27 @@ public class MobController implements Listener
 			LivingEntity livent = (LivingEntity) event.getEntity();
 			freeIfControlled(livent);
 		}
+	}
+	
+	//Handle logging off grabbers
+	@EventHandler
+	public void handleDisconnect(PlayerQuitEvent event)
+	{
+		if(_controllerMap.get(event.getPlayer()) != null)
+		{
+			//setNotControlling(event.getPlayer());
+			ControlledMob mob = _controllerMap.get(event.getPlayer());
+			mob.unMountMob();
+			mob.removeMount();
+			_controllerMap.remove(event.getPlayer());
+		}
+		
+		//grabbing player may also be grabbed
+		if(isControlled(event.getPlayer()))
+		{
+			//Avoid concurrent modification exceptions by not iterator removing
+			removeEffectsByGrabbed(event.getPlayer());
+		}
+		
 	}
 }

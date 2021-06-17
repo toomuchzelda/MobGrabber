@@ -76,6 +76,7 @@ public class ControlledMob implements Listener
 		if(_mount.getPassengers().size() > 0 &&_mount.getPassengers().get(0).equals(_controlled))
 		{
 			_mount.removePassenger(_controlled);
+			//avoid falling through floors
 			_controlled.teleport(_mount.getLocation().clone().add(0, 0.5, 0));
 		}
 	}
@@ -89,11 +90,6 @@ public class ControlledMob implements Listener
 		HandlerList.unregisterAll(this);
 	}
 
-	/**
-	 * If controlled mob is a Player, tell everyone's clients they're riding the Pig
-	 * <br>
-	 * For clientside desyncs, it's smoother in gameplay than using .addPassenger repeatedly.
-	 */
 	/*public void sendMountPackets()
 	{
 		if(_isPlayer)
@@ -124,6 +120,10 @@ public class ControlledMob implements Listener
 		}
 	}*/
 
+	
+	/**
+	 * @return The LivingEntity being grabbed
+	 */
 	public LivingEntity getMob()
 	{
 		return _controlled;
