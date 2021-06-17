@@ -281,21 +281,6 @@ public class MobController implements Listener
 		return heldLoc;
 	}
 	
-	@EventHandler
-	public void onControlledPlayerMove(PlayerMoveEvent event)
-	{
-		if(isControlled(event.getPlayer()))
-		{
-			Vector from = event.getFrom().toVector();
-			Vector to = event.getTo().toVector();
-			Vector difference = to.subtract(from);
-			if(difference.equals(new Vector().zero()))
-				return;
-			
-			event.setCancelled(true);
-		}
-	}
-	
 	public static boolean isControlled(LivingEntity controlled)
 	{
 		Iterator<Entry<Player, ControlledMob>> itel = _controllerMap.entrySet().iterator();
