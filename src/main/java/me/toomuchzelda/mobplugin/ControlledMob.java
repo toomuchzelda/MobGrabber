@@ -9,6 +9,7 @@ import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDamageEvent.DamageCause;
+import org.bukkit.util.Vector;
 
 /**
  * @author toomuchzelda
@@ -18,6 +19,10 @@ public class ControlledMob implements Listener
 {
 	private LivingEntity _controlled;
 	private Pig _mount;
+	
+	//just record to apply to mounted mob when releasing
+	//(throwing the mob kind of effect)
+	private Vector velocity;
 
 	/**
 	 * @param controlled The LivingEntity to be grabbed
@@ -142,7 +147,23 @@ public class ControlledMob implements Listener
 		//		
 		return _mount;
 	}
+	
+	public Vector getVelocity()
+	{
+		return velocity;
+	}
+	
+	public void setVelocity(Vector velocity)
+	{
+		this.velocity = velocity;
+	}
 
+	//apply the velocity, used when releasing
+	public void applyVelocity()
+	{
+		_controlled.setVelocity(velocity);
+	}
+	
 	@Override
 	public String toString()
 	{

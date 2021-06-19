@@ -218,24 +218,20 @@ public class MobController implements Listener
 	{
 		Location heldLocation = calculateHeldLoc(grabber, grabbed.getMob(), HOLDING_DISTANCE);
 
-		//if(grabbed.isPlayer())
-		//{
 		//https://www.spigotmc.org/threads/get-nms-class-from-bukkit-class.285298/
 		//https://www.sSilverfishotmc.org/threads/helping-to-teleport-a-packet-entity-with-passenger.358136/
 		//use NMS mob because teleporting a bukkit entity with passengers doesnt work
 
 		//EntityPig nmsPig = ((CraftPig) grabbed.getMount()).getHandle();
 		//nmsPig.setLocation(heldLocation.getX(), heldLocation.getY(), heldLocation.getZ(), heldLocation.getYaw(), heldLocation.getPitch());
+		
+		//get current 'velocity' and record it
+		//just using getVelocity method on mount doesn't work
+		Vector currentVelocity = heldLocation.toVector().subtract(grabbed.getMount().getLocation().toVector());
+		grabbed.setVelocity(currentVelocity);
+		
 		Pig nmsPig = ((CraftPig) grabbed.getMount()).getHandle();
 		nmsPig.moveTo(heldLocation.getX(), heldLocation.getY(), heldLocation.getZ());
-		
-		//grabbed.getMount().teleport(heldLocation);
-		//		}
-		//		else
-//		{
-//			grabbed.getMob().teleport(heldLocation);
-//		}
-
 	}
 	
 	//calculate the location grabbed mobs should be held at
@@ -360,15 +356,25 @@ public class MobController implements Listener
 	{
 		if(_controllerMap.get(event.getPlayer()) != null)
 		{
+			ControlledMob mob = _controllerMap.get(event.getPlayer());
+			
 			ItemStack dropped = event.getItemDrop().getItemStack().clone();
 			dropped.setAmount(1);
 			
 			if(dropped.equals(_controllerItem))
 			{
 				event.setCancelled(true);
-				String grabbedName = _controllerMap.get(event.getPlayer()).getMob().getName();
+				String grabbedName = mob.getMob().getName();
 				event.getPlayer().sendMessage("§8Dropped " + grabbedName);
-				setNotControlling(event.getPlayer());
+				//setNotControlling(event.getPlayer());
+				
+				removeControlledEffects(event.getPlayer());
+				//only throw velocity on intentional drops?
+				mob.applyVelocity();
+				
+				_controllerMap.remove(event.getPlayer());
+				
+				
 			}
 			
 		}
