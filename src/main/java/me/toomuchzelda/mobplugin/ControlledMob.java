@@ -23,15 +23,17 @@ public class ControlledMob implements Listener
 	//just record to apply to mounted mob when releasing
 	//(throwing the mob kind of effect)
 	private Vector velocity;
+	
+	//distance to hold the mob from the player
+	private double holdingDistance;
 
 	/**
 	 * @param controlled The LivingEntity to be grabbed
 	 */
-	public ControlledMob(LivingEntity controlled)
+	public ControlledMob(LivingEntity controlled, double distance)
 	{
 		_controlled = controlled;
-		//if(controlled instanceof Player)
-		//{
+		
 		_mount = (Pig) _controlled.getWorld().spawnEntity(_controlled.getLocation(), EntityType.PIG);
 		//_mount.setInvisible(true);
 		_mount.setBaby();
@@ -40,22 +42,9 @@ public class ControlledMob implements Listener
 		_mount.setAI(false);
 		_mount.setSilent(true);
 		_mount.setCollidable(false);
-		//		}
-		//		else
-		//		{
-		//_mount = null;
 
-		//			_mount = (Pig) _controlled.getWorld().spawnEntity(_controlled.getLocation(), EntityType.PIG);
-		//			_mount.setInvisible(true);
-		//			_mount.setBaby();
-		//			_mount.setAgeLock(true);
-		//			_mount.setGravity(false);
-		//			_mount.setAI(false);
-		//			_mount.setSilent(true);
-		//			_mount.setCollidable(false);
-		//		//}
-
-
+		this.holdingDistance = distance;
+		
 		MobPlugin.getMobPlugin().getServer().getPluginManager().registerEvents(this, MobPlugin.getMobPlugin());
 	}
 
@@ -141,11 +130,17 @@ public class ControlledMob implements Listener
 
 	public Pig getMount()
 	{
-		//		if(!_isPlayer)
-		//			throw new IllegalStateException("This ControlledMob instance is not a Player and "
-		//					+ "doesn't have a mount");
-		//		
 		return _mount;
+	}
+	
+	public double getDistance()
+	{
+		return holdingDistance;
+	}
+	
+	public void setDistance(double distance)
+	{
+		this.holdingDistance = distance;
 	}
 	
 	public Vector getVelocity()
@@ -167,11 +162,8 @@ public class ControlledMob implements Listener
 	@Override
 	public String toString()
 	{
-		String s = "(ControlledMob: mob=" + _controlled.getName();//+ ",isPlayer=" + _isPlayer;
-		//if(_isPlayer)
-		//{
+		String s = "(ControlledMob: mob=" + _controlled.getName();
 		s += ",mount=" + _mount.getName();
-		//}
 		s += ')';
 
 		return s;

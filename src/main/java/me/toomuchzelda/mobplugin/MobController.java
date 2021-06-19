@@ -24,6 +24,7 @@ import org.bukkit.event.entity.ExplosionPrimeEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerItemHeldEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.vehicle.VehicleExitEvent;
 import org.bukkit.inventory.ItemStack;
@@ -165,13 +166,17 @@ public class MobController implements Listener
 		if(_controllerMap.get(user) == null)
 		{
 			ControlledMob ctrlMob;
+			
+			//calculate distance between grabber/grabbed
+			double distance = target.getLocation().toVector().subtract(user.getLocation().toVector()).length();
+			user.sendMessage("distance: " + distance);
 
 			if(!isPaperMC)
 			{
-				target.teleport(calculateHeldLoc(user, target, HOLDING_DISTANCE));
+				target.teleport(calculateHeldLoc(user, target, distance));
 			}
 
-			ctrlMob = new ControlledMob(target);
+			ctrlMob = new ControlledMob(target, distance);
 
 			ctrlMob.mountPlayer();
 
@@ -216,7 +221,7 @@ public class MobController implements Listener
 	
 	public static void moveGrabbedMob(Player grabber, ControlledMob grabbed)
 	{
-		Location heldLocation = calculateHeldLoc(grabber, grabbed.getMob(), HOLDING_DISTANCE);
+		Location heldLocation = calculateHeldLoc(grabber, grabbed.getMob(), grabbed.getDistance());
 
 		//https://www.spigotmc.org/threads/get-nms-class-from-bukkit-class.285298/
 		//https://www.sSilverfishotmc.org/threads/helping-to-teleport-a-packet-entity-with-passenger.358136/
@@ -398,6 +403,29 @@ public class MobController implements Listener
 		}
 	}
 	
+	//adjust holding distance when shift+scroll hotbar
+	@EventHandler
+	public void onScroll(PlayerItemHeldEvent event)
+	{
+		//event.getPlayer().sendMessage("from=" + event.getPreviousSlot() + " to=" + event.getNewSlot());
+		if(_controllerMap.get(event.getPlayer()) != null && event.getPlayer().isSneaking())
+		{
+			int from = event.getPreviousSlot();
+			int to = event.getNewSlot();
+			ControlledMob mob = _controllerMap.get(event.getPlayer());
+			
+			//scrolling right on hotbar (down on mouse wheel) pull closer
+			if((from == 8 && to == 0) || (to > from && (from != 0 || to != 8)))
+				mob.setDistance(mob.getDistance() - 0.5);
+			//scroll left on hotbar up on mouse wheel: push further
+			else if((from == 0 && to == 8) || from > to)
+				mob.setDistance(mob.getDistance() + 0.5);
+			
+			event.setCancelled(true);
+			
+		}
+	}
+	
 //	public static HashMap<Player, ControlledMob> getControllerMap()
 //	{
 //		return _controllerMap;
@@ -507,6 +535,5 @@ public class MobController implements Listener
 			//only removes if controlled
 			removeEffectsByGrabbed(event.getPlayer());
 		}
-		
 	}
 }
