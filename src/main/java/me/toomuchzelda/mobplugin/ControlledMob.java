@@ -29,6 +29,10 @@ public class ControlledMob implements Listener
 	
 	//last held item slot for distance scrolling
 	private int lastSlot;
+	
+	//rubbish to avoid ConcurrentModificationExceptions across multiple different events that remove
+	//from the hashmap
+	private boolean removed = false;
 
 	/**
 	 * @param controlled The LivingEntity to be grabbed
@@ -158,6 +162,15 @@ public class ControlledMob implements Listener
 		this.lastSlot = lastSlot;
 	}
 
+	public void setRemoved()
+	{
+		removed = true;
+	}
+	
+	public boolean isRemoved()
+	{
+		return removed;
+	}
 
 	public Vector getVelocity()
 	{

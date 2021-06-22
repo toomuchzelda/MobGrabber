@@ -322,7 +322,11 @@ public class MobController implements Listener
 			if(entry.getValue().getMob() == controlled)
 			{
 				removeControlledEffects(entry.getKey());
-				itel.remove();
+				if(!entry.getValue().isRemoved())
+				{
+					entry.getValue().setRemoved();
+					itel.remove();
+				}
 				found = true;
 			}
 		}
