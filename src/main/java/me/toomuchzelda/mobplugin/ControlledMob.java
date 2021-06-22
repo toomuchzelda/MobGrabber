@@ -26,11 +26,14 @@ public class ControlledMob implements Listener
 	
 	//distance to hold the mob from the player
 	private double holdingDistance;
+	
+	//last held item slot for distance scrolling
+	private int lastSlot;
 
 	/**
 	 * @param controlled The LivingEntity to be grabbed
 	 */
-	public ControlledMob(LivingEntity controlled, double distance)
+	public ControlledMob(LivingEntity controlled, double distance, int slot)
 	{
 		_controlled = controlled;
 		
@@ -44,6 +47,7 @@ public class ControlledMob implements Listener
 		_mount.setCollidable(false);
 
 		this.holdingDistance = distance;
+		this.lastSlot = slot;
 		
 		MobPlugin.getMobPlugin().getServer().getPluginManager().registerEvents(this, MobPlugin.getMobPlugin());
 	}
@@ -143,6 +147,18 @@ public class ControlledMob implements Listener
 		this.holdingDistance = distance;
 	}
 	
+	public int getLastSlot()
+	{
+		return lastSlot;
+	}
+
+
+	public void setLastSlot(int lastSlot)
+	{
+		this.lastSlot = lastSlot;
+	}
+
+
 	public Vector getVelocity()
 	{
 		return velocity;

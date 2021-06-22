@@ -26,6 +26,7 @@ import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerItemHeldEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.PlayerToggleSneakEvent;
 import org.bukkit.event.vehicle.VehicleExitEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -46,8 +47,9 @@ public class MobController implements Listener
 	//						user,    target
 	private static HashMap<Player, ControlledMob> _controllerMap = new HashMap<>();
 	
-	//private static final PotionEffect _noJump = new PotionEffect(PotionEffectType.JUMP, 99999, 150, false, false, false);
-	public static final double HOLDING_DISTANCE = 3.5d;
+	//min and max distance grabber can hold entity from
+	public static final double minDistance = 1.2;
+	public static final double maxDistance = 30;
 	
 	//for some bad behaviour that doesnt appear in PaperMC
 	public static boolean isPaperMC = false;
@@ -119,9 +121,9 @@ public class MobController implements Listener
 					};
 					
 					RayTraceResult result = world.rayTrace(p.getEyeLocation(), p.getLocation().getDirection()
-							, 30.0, FluidCollisionMode.NEVER, true, 0, notUserOrSpectator);
+							, maxDistance, FluidCollisionMode.NEVER, true, 0, notUserOrSpectator);
 					
-					drawParticleLine(p.getEyeLocation(), p.getLocation().getDirection(), 30);
+					drawParticleLine(p.getEyeLocation(), p.getLocation().getDirection(), maxDistance);
 					
 					//if the raytrace hit an entity
 					if(result != null && result.getHitBlock() == null && result.getHitEntity() != null)
@@ -169,17 +171,20 @@ public class MobController implements Listener
 			
 			//calculate distance between grabber/grabbed
 			double distance = target.getLocation().toVector().subtract(user.getLocation().toVector()).length();
-			user.sendMessage("distance: " + distance);
+			if(distance < minDistance)
+				distance = minDistance;
 
 			if(!isPaperMC)
 			{
 				target.teleport(calculateHeldLoc(user, target, distance));
 			}
+			
+			int slot = user.getInventory().getHeldItemSlot();
 
-			ctrlMob = new ControlledMob(target, distance);
+			ctrlMob = new ControlledMob(target, distance, slot);
 
 			ctrlMob.mountPlayer();
-
+			
 			_controllerMap.put(user, ctrlMob);
 		}
 	}
@@ -356,6 +361,7 @@ public class MobController implements Listener
 //		}
 //	}
 	
+	//grabber drops their mobgrab item to release grabbed
 	@EventHandler
 	public void onDropGrabberItem(PlayerDropItemEvent event)
 	{
@@ -378,14 +384,31 @@ public class MobController implements Listener
 				mob.applyVelocity();
 				
 				_controllerMap.remove(event.getPlayer());
-				
-				
 			}
-			
 		}
 	}
 	
-	public static void drawParticleLine(Location start, Vector direction, int length)
+	//put the hotbar slot to slot 4 for optimal distance scrolling
+	@EventHandler
+	public void onGrabberShift(PlayerToggleSneakEvent event)
+	{
+		if(_controllerMap.get(event.getPlayer()) != null)
+		{
+			ControlledMob mob = _controllerMap.get(event.getPlayer());
+			if(event.isSneaking())
+			{
+				mob.setLastSlot(event.getPlayer().getInventory().getHeldItemSlot());
+				event.getPlayer().getInventory().setHeldItemSlot(4);
+			}
+			else
+			{
+				event.getPlayer().getInventory().setHeldItemSlot(mob.getLastSlot());
+			}
+		}
+	}
+	
+	
+	public static void drawParticleLine(Location start, Vector direction, double length)
 	{
 		Vector step = direction.clone().normalize();
 		Location stepLoc = start.clone();
@@ -407,19 +430,24 @@ public class MobController implements Listener
 	@EventHandler
 	public void onScroll(PlayerItemHeldEvent event)
 	{
-		//event.getPlayer().sendMessage("from=" + event.getPreviousSlot() + " to=" + event.getNewSlot());
+		
 		if(_controllerMap.get(event.getPlayer()) != null && event.getPlayer().isSneaking())
 		{
 			int from = event.getPreviousSlot();
 			int to = event.getNewSlot();
+			int difference = from - to;
+			
+			event.getPlayer().sendMessage("from=" + event.getPreviousSlot() + " to=" + event.getNewSlot() +
+					"diff=" + difference);
+			
 			ControlledMob mob = _controllerMap.get(event.getPlayer());
 			
 			//scrolling right on hotbar (down on mouse wheel) pull closer
-			if((from == 8 && to == 0) || (to > from && (from != 0 || to != 8)))
-				mob.setDistance(mob.getDistance() - 0.5);
+			//if(from > to)
+				mob.setDistance(mob.getDistance() + difference);
 			//scroll left on hotbar up on mouse wheel: push further
-			else if((from == 0 && to == 8) || from > to)
-				mob.setDistance(mob.getDistance() + 0.5);
+			//else if((from == 0 && to == 8) || from > to)
+			//	mob.setDistance(mob.getDistance() + 0.5);
 			
 			event.setCancelled(true);
 			
