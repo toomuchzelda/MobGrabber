@@ -437,20 +437,27 @@ public class MobController implements Listener
 			int to = event.getNewSlot();
 			int difference = from - to;
 			
-			event.getPlayer().sendMessage("from=" + event.getPreviousSlot() + " to=" + event.getNewSlot() +
-					"diff=" + difference);
+			//event.getPlayer().sendMessage("from=" + event.getPreviousSlot() + " to=" + event.getNewSlot() +
+			//		"diff=" + difference);
 			
 			ControlledMob mob = _controllerMap.get(event.getPlayer());
 			
-			//scrolling right on hotbar (down on mouse wheel) pull closer
-			//if(from > to)
+			if(mob.getDistance() + difference < minDistance)
+			{
+				mob.setDistance(minDistance);
+				event.getPlayer().sendMessage("§8You can't pull " + mob.getMob().getName() + " any closer");
+			}
+			else if(mob.getDistance() + difference > maxDistance)
+			{
+				mob.setDistance(maxDistance);
+				event.getPlayer().sendMessage("§8You can't push " + mob.getMob().getName() + " any further");
+			}
+			else
+			{
 				mob.setDistance(mob.getDistance() + difference);
-			//scroll left on hotbar up on mouse wheel: push further
-			//else if((from == 0 && to == 8) || from > to)
-			//	mob.setDistance(mob.getDistance() + 0.5);
+			}
 			
 			event.setCancelled(true);
-			
 		}
 	}
 	
