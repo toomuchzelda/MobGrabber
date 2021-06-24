@@ -2,6 +2,7 @@ package me.toomuchzelda.mobplugin;
 
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -13,12 +14,20 @@ public final class MobPlugin extends JavaPlugin
 {
 	private static MobPlugin _mobPlugin;
 	MobController _mobController;
+	FileConfiguration config = this.getConfig();
 	
 	@Override
 	public void onEnable()
 	{
 		_mobPlugin = this;
-		_mobController = new MobController(this);
+		
+		config.addDefault("minimumDistance", 1.2d);
+		config.addDefault("maximumDistance", 30);
+		
+		config.options().copyDefaults(true);
+		saveConfig();
+		
+		_mobController = new MobController(this, config);
 		_mobController.startTicker();
 	}
 	
@@ -38,7 +47,7 @@ public final class MobPlugin extends JavaPlugin
 				if(args.length == 0)
 				{
 					p.getInventory().addItem(_mobController._controllerItem);
-					sender.sendMessage("§9Given mob controller");
+					sender.sendMessage("§9Given mob grabber");
 				}
 				else if(args.length > 0)
 				{
@@ -46,6 +55,7 @@ public final class MobPlugin extends JavaPlugin
 					{
 						p.sendMessage(MobController.getMap().toString());
 						p.sendMessage("Running PaperMC: " + MobController.isPaperMC);
+						p.sendMessage("awesome: " + config.getBoolean("youAreAwesome"));
 					}
 				}
 				

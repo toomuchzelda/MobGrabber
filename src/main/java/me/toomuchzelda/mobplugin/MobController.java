@@ -12,6 +12,7 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.World;
+import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.craftbukkit.v1_17_R1.entity.CraftPig;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
@@ -47,16 +48,19 @@ public class MobController implements Listener
 	//						user,    target
 	private static HashMap<Player, ControlledMob> _controllerMap = new HashMap<>();
 	
+	private FileConfiguration config;
+	
 	//min and max distance grabber can hold entity from
-	public static final double minDistance = 1.2;
-	public static final double maxDistance = 30;
+	public static double minDistance = 1.2;
+	public static double maxDistance = 30;
 	
 	//for some bad behaviour that doesnt appear in PaperMC
 	public static boolean isPaperMC = false;
 	
-	public MobController(MobPlugin plugin)
+	public MobController(MobPlugin plugin, FileConfiguration config)
 	{
 		this.createControllerItem();
+		this.config = config;
 		MobPlugin.getMobPlugin().getServer().getPluginManager().registerEvents(this, plugin);
 		//https://www.spigotmc.org/threads/test-if-server-is-spigot-or-craftbukkit.96925/
 		//https://papermc.io/forums/t/checking-for-server-type-paper-spigot-or-bukkit/981
@@ -91,72 +95,88 @@ public class MobController implements Listener
 				//compare the item held disregarding amount in stack
 				ItemStack item = event.getItem().clone();
 				item.setAmount(1);
-				if(item.equals(_controllerItem) && _controllerMap.get(event.getPlayer()) == null)
+				if(item.equals(_controllerItem))
 				{
-					//perform a raytrace to see if they're targetting an entity or not
-					World world = event.getPlayer().getWorld();
-					Player p = event.getPlayer();
-					
-					//uuuuuuhhhhhh
-					Predicate<Entity> notUserOrSpectator = new Predicate<Entity>()
+					if(_controllerMap.get(event.getPlayer()) == null)
 					{
+						//perform a raytrace to see if they're targetting an entity or not
+						World world = event.getPlayer().getWorld();
+						Player p = event.getPlayer();
 
-						@Override
-						public boolean test(Entity e) {
-							boolean bool = false;
-							if(e.getEntityId() != p.getEntityId())
-							{
-								bool = true;
-								if(e instanceof Player)
+						//uuuuuuhhhhhh
+						Predicate<Entity> notUserOrSpectator = new Predicate<Entity>()
+						{
+
+							@Override
+							public boolean test(Entity e) {
+								boolean bool = false;
+								if(e.getEntityId() != p.getEntityId())
 								{
-									Player rayPlayer = (Player) e;
-									if(rayPlayer.getGameMode().equals(GameMode.SPECTATOR))
+									bool = true;
+									if(e instanceof Player)
 									{
-										bool = false;
+										Player rayPlayer = (Player) e;
+										if(rayPlayer.getGameMode().equals(GameMode.SPECTATOR))
+										{
+											bool = false;
+										}
 									}
 								}
+								return bool;
 							}
-							return bool;
-						}
-					};
-					
-					RayTraceResult result = world.rayTrace(p.getEyeLocation(), p.getLocation().getDirection()
-							, maxDistance, FluidCollisionMode.NEVER, true, 0, notUserOrSpectator);
-					
-					drawParticleLine(p.getEyeLocation(), p.getLocation().getDirection(), maxDistance);
-					
-					//if the raytrace hit an entity
-					if(result != null && result.getHitBlock() == null && result.getHitEntity() != null)
-					{
-						if(result.getHitEntity() instanceof LivingEntity)
+						};
+
+						RayTraceResult result = world.rayTrace(p.getEyeLocation(), p.getLocation().getDirection()
+								, maxDistance, FluidCollisionMode.NEVER, true, 0, notUserOrSpectator);
+
+						drawParticleLine(p.getEyeLocation(), p.getLocation().getDirection(), maxDistance);
+
+						//if the raytrace hit an entity
+						if(result != null && result.getHitBlock() == null && result.getHitEntity() != null)
 						{
-							//p.sendMessage(result.getHitEntity().getName());
-							//Vector difference = result.getHitPosition().subtract(p.getEyeLocation().toVector());
-							//double distance = difference.length();
-							//p.sendMessage("Distance " + distance);
-							LivingEntity livent = (LivingEntity) result.getHitEntity();
-							
-							if(isControlled(event.getPlayer()) && result.getHitEntity() instanceof Player)
+							if(result.getHitEntity() instanceof LivingEntity)
 							{
-								//Player controller = (Player) result.getHitEntity();
-								ControlledMob mob = _controllerMap.get(result.getHitEntity());
-								if(mob != null && mob.getMob() == p)
+								//p.sendMessage(result.getHitEntity().getName());
+								//Vector difference = result.getHitPosition().subtract(p.getEyeLocation().toVector());
+								//double distance = difference.length();
+								//p.sendMessage("Distance " + distance);
+								LivingEntity livent = (LivingEntity) result.getHitEntity();
+
+								if(isControlled(event.getPlayer()) && result.getHitEntity() instanceof Player)
 								{
-									p.sendMessage("You can't grab someone who's grabbing you!");
+									//Player controller = (Player) result.getHitEntity();
+									ControlledMob mob = _controllerMap.get(result.getHitEntity());
+									if(mob != null && mob.getMob() == p)
+									{
+										p.sendMessage("You can't grab someone who's grabbing you!");
+									}
+								}
+								else if(!isControlled(livent))
+								{
+									setControlling(p, livent);
+
+									//p.sendMessage(_controllerMap.toString());
+									//p.sendMessage("===================");
+								}
+								else
+								{
+									p.sendMessage("Someone else is grabbing " + livent.getName());
 								}
 							}
-							else if(!isControlled(livent))
-							{
-								setControlling(p, livent);
-								
-								//p.sendMessage(_controllerMap.toString());
-								//p.sendMessage("===================");
-							}
-							else
-							{
-								p.sendMessage("Someone else is grabbing " + livent.getName());
-							}
 						}
+					}
+					else
+					{
+						ControlledMob mob = _controllerMap.get(event.getPlayer());
+						removeControlledEffects(event.getPlayer());
+						Vector toss = mob.getMob().getLocation().toVector().subtract(event.getPlayer()
+								.getLocation().toVector());
+						
+						toss.multiply(0.3);
+						mob.getMob().setVelocity(toss);
+						event.getPlayer().sendMessage("§8Threw " + mob.getMob().getName());
+						
+						_controllerMap.remove(event.getPlayer());
 					}
 				}
 			}
@@ -414,7 +434,7 @@ public class MobController implements Listener
 	
 	public static void drawParticleLine(Location start, Vector direction, double length)
 	{
-		Vector step = direction.clone().normalize();
+		Vector step = direction.clone().normalize().multiply(0.5);
 		Location stepLoc = start.clone();
 		
 		for(int i = 1; i < length * 2; i++)
@@ -423,6 +443,7 @@ public class MobController implements Listener
 			//step.multiply(i);
 			stepLoc.add(step);
 			
+			//hit a wall or sth
 			if(stepLoc.getBlock().getBlockData().getMaterial() != Material.AIR)
 				return;
 			
@@ -435,7 +456,7 @@ public class MobController implements Listener
 	public void onScroll(PlayerItemHeldEvent event)
 	{
 		
-		if(_controllerMap.get(event.getPlayer()) != null && event.getPlayer().isSneaking())
+		if(event.getPlayer().isSneaking() && _controllerMap.get(event.getPlayer()) != null)
 		{
 			int from = event.getPreviousSlot();
 			int to = event.getNewSlot();
@@ -449,12 +470,12 @@ public class MobController implements Listener
 			if(mob.getDistance() + difference < minDistance)
 			{
 				mob.setDistance(minDistance);
-				event.getPlayer().sendMessage("§8You can't pull " + mob.getMob().getName() + " any closer");
+				event.getPlayer().sendMessage("§8You can't hold " + mob.getMob().getName() + " any closer");
 			}
 			else if(mob.getDistance() + difference > maxDistance)
 			{
 				mob.setDistance(maxDistance);
-				event.getPlayer().sendMessage("§8You can't push " + mob.getMob().getName() + " any further");
+				event.getPlayer().sendMessage("§8You can't hold " + mob.getMob().getName() + " any further");
 			}
 			else
 			{
