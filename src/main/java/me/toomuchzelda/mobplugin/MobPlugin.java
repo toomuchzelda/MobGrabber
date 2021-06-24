@@ -62,8 +62,12 @@ public final class MobPlugin extends JavaPlugin
 						p.sendMessage("===Mob Grabber===");
 						p.sendMessage("/mbc - get the Mob Grabber item");
 						p.sendMessage("Point at a mob and right click to pick them up!\n"
-								+ "To drop them, hold the Mob Grabber press your drop key.\n"
+								+ "To drop them, hold the Mob Grabber and press your drop key.\n"
 								+ "To move them closer/further, Sneak and scroll up/down your hotbar\n"
+								+ "To throw them, left click with your Grabber item or fling them around"
+								+ "and drop (Q) at the right time\n"
+								+ "The further you hold them when left clicking the further they'll fly\n"
+								+ "To annoy someone, grab them and put them into lava\n"
 								+ "The crafting recipe and distance parameters can be changed in MobPlugin"
 								+ "/config.yml");
 						p.sendMessage("/mbc help - view this page");

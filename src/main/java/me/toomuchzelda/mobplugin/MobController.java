@@ -197,7 +197,7 @@ public class MobController implements Listener
 	{
 		if(event.getAction() == Action.LEFT_CLICK_AIR || event.getAction() == Action.LEFT_CLICK_BLOCK)
 		{
-			if(_controllerMap.get(event.getPlayer()) != null)
+			if(event.getItem().equals(_controllerItem) && _controllerMap.get(event.getPlayer()) != null)
 			{
 				ControlledMob mob = _controllerMap.get(event.getPlayer());
 				removeControlledEffects(event.getPlayer());
