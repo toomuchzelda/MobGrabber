@@ -70,6 +70,7 @@ public class MobController implements Listener
 		Bukkit.getLogger().info("Minimum holding distance: " + minDistance);
 		maxDistance = config.getDouble("maximumDistance");
 		Bukkit.getLogger().info("Maximum holding distance: " + maxDistance);
+		Bukkit.getLogger().info("Enabled default crafting recipe: " + config.getBoolean("craftable"));
 
 		MobPlugin.getMobPlugin().getServer().getPluginManager().registerEvents(this, plugin);
 		//https://www.spigotmc.org/threads/test-if-server-is-spigot-or-craftbukkit.96925/

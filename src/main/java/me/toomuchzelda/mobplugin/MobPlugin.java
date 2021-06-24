@@ -56,7 +56,19 @@ public final class MobPlugin extends JavaPlugin
 					{
 						p.sendMessage(MobController.getMap().toString());
 						p.sendMessage("Running PaperMC: " + MobController.isPaperMC);
-						p.sendMessage("awesome: " + config.getBoolean("youAreAwesome"));
+					}
+					else if(args[0].equals("help"))
+					{
+						p.sendMessage("===Mob Grabber===");
+						p.sendMessage("/mbc - get the Mob Grabber item");
+						p.sendMessage("Point at a mob and right click to pick them up!\n"
+								+ "To drop them, hold the Mob Grabber press your drop key.\n"
+								+ "To move them closer/further, Sneak and scroll up/down your hotbar\n"
+								+ "The crafting recipe and distance parameters can be changed in MobPlugin"
+								+ "/config.yml");
+						p.sendMessage("/mbc help - view this page");
+						p.sendMessage("Plugin created by toomuchzelda");
+						
 					}
 				}
 				
