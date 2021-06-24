@@ -61,6 +61,12 @@ public class MobController implements Listener
 	{
 		this.createControllerItem();
 		this.config = config;
+		
+		minDistance = config.getDouble("minimumDistance");
+		Bukkit.getLogger().info("Minimum holding distance: " + minDistance);
+		maxDistance = config.getDouble("maximumDistance");
+		Bukkit.getLogger().info("Maximum holding distance: " + maxDistance);
+		
 		MobPlugin.getMobPlugin().getServer().getPluginManager().registerEvents(this, plugin);
 		//https://www.spigotmc.org/threads/test-if-server-is-spigot-or-craftbukkit.96925/
 		//https://papermc.io/forums/t/checking-for-server-type-paper-spigot-or-bukkit/981
