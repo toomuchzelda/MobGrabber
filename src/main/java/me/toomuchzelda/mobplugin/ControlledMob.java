@@ -42,7 +42,7 @@ public class ControlledMob implements Listener
 		_controlled = controlled;
 		
 		_mount = (Pig) _controlled.getWorld().spawnEntity(_controlled.getLocation(), EntityType.PIG);
-		//_mount.setInvisible(true);
+		_mount.setInvisible(true);
 		_mount.setBaby();
 		_mount.setAgeLock(true);
 		_mount.setGravity(false);

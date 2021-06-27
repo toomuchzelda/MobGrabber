@@ -12,6 +12,7 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Particle;
+import org.bukkit.Particle.DustOptions;
 import org.bukkit.World;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.craftbukkit.v1_17_R1.entity.CraftPig;
@@ -99,9 +100,9 @@ public class MobController implements Listener
 		{
 			NamespacedKey key = new NamespacedKey(MobPlugin.getMobPlugin(), "mob_grabber");
 			ShapedRecipe recipe = new ShapedRecipe(key, _controllerItem);
-			//H=Shulker Shell, S=String, B=Bucket, R=Redstone Block
+			//H=Gold Ingot, S=String, B=Bucket, R=Redstone Block
 			recipe.shape(" H ", "SBS", " R ");
-			recipe.setIngredient('H', Material.SHULKER_SHELL);
+			recipe.setIngredient('H', Material.GOLD_INGOT);
 			recipe.setIngredient('S', Material.STRING);
 			recipe.setIngredient('B', Material.BUCKET);
 			recipe.setIngredient('R', Material.REDSTONE_BLOCK);
@@ -109,6 +110,13 @@ public class MobController implements Listener
 			Bukkit.addRecipe(recipe);
 		}
 	}
+	
+//	@EventHandler
+//	public void printInteract(PlayerInteractEvent event)
+//	{
+//		//if(event.getPlayer().is)
+//		event.getPlayer().sendMessage(event.getAction().toString());
+//	}
 
 	@EventHandler
 	public void onRightClick(PlayerInteractEvent event)
@@ -197,7 +205,8 @@ public class MobController implements Listener
 	{
 		if(event.getAction() == Action.LEFT_CLICK_AIR || event.getAction() == Action.LEFT_CLICK_BLOCK)
 		{
-			if(event.getItem().equals(_controllerItem) && _controllerMap.get(event.getPlayer()) != null)
+			if(event.getItem() != null && event.getItem().equals(_controllerItem) 
+					&& _controllerMap.get(event.getPlayer()) != null)
 			{
 				ControlledMob mob = _controllerMap.get(event.getPlayer());
 				removeControlledEffects(event.getPlayer());
@@ -268,6 +277,7 @@ public class MobController implements Listener
 					Entry<Player, ControlledMob> entry = iter.next();
 
 					moveGrabbedMob(entry.getKey(), entry.getValue());
+					drawGrabbedParticle(entry.getValue());
 				}
 			}
 
@@ -294,11 +304,20 @@ public class MobController implements Listener
 		nmsPig.moveTo(heldLocation.getX(), heldLocation.getY(), heldLocation.getZ());
 	}
 
+	public static void drawGrabbedParticle(ControlledMob grabbed)
+	{
+		Location loc = grabbed.getMount().getLocation();
+		loc.add(0, grabbed.getMount().getHeight(), 0);
+		
+		DustOptions colour = new DustOptions(org.bukkit.Color.ORANGE, 2);
+		
+		loc.getWorld().spawnParticle(Particle.REDSTONE, loc.getX(), loc.getY(), loc.getZ(), 0, 
+				0, 0, 0, 10, colour);
+	}
+	
 	//calculate the location grabbed mobs should be held at
 	public static Location calculateHeldLoc(Player grabber, LivingEntity grabbed, double holdingDistance)
 	{
-		LivingEntity controlled = grabbed;
-
 		Vector userDirection = grabber.getLocation().getDirection().multiply(holdingDistance);
 		Location heldLoc = grabber.getEyeLocation().add(userDirection);
 
@@ -312,25 +331,25 @@ public class MobController implements Listener
 			// TODO
 			//grabber.sendMessage("block=" + rayTrace.getHitBlock() + ",position=" + rayTrace.getHitPosition());
 			Vector hitPosition = rayTrace.getHitPosition();
-			hitPosition.add(new Vector(0, -(controlled.getHeight() / 2), 0));
+			hitPosition.add(new Vector(0, -(grabbed.getHeight() / 2), 0));
 
 			Vector offset = userDirection.clone().normalize();
 
 			offset.setX(offset.getX() * 0.3);
-			offset.setY(offset.getY() * (controlled.getHeight() / 2));
+			offset.setY(offset.getY() * (grabbed.getHeight() / 2));
 			offset.setZ(offset.getZ() * 0.3);
 
 			hitPosition.subtract(offset);
 
 			heldLoc.setX(hitPosition.getX());
 			heldLoc.setY(hitPosition.getY());
-			//heldLoc.add(0, -(controlled.getHeight() / 2), 0);
+			//heldLoc.add(0, -(grabbed.getHeight() / 2), 0);
 			heldLoc.setZ(hitPosition.getZ());
 		}
 		else
 		{
-			heldLoc.add(0, -(controlled.getHeight() / 2), 0);
-			heldLoc.setDirection(controlled.getLocation().getDirection());
+			heldLoc.add(0, -(grabbed.getHeight() / 2), 0);
+			heldLoc.setDirection(grabbed.getLocation().getDirection());
 		}
 
 		return heldLoc;
