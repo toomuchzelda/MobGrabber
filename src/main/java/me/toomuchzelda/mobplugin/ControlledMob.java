@@ -33,6 +33,9 @@ public class ControlledMob implements Listener
 	//rubbish to avoid ConcurrentModificationExceptions across multiple different events that remove
 	//from the hashmap
 	private boolean removed = false;
+	
+	//ratchet and clank
+	private boolean isBackpack;
 
 	/**
 	 * @param controlled The LivingEntity to be grabbed
@@ -52,6 +55,7 @@ public class ControlledMob implements Listener
 
 		this.holdingDistance = distance;
 		this.lastSlot = slot;
+		this.isBackpack = false;
 		
 		MobPlugin.getMobPlugin().getServer().getPluginManager().registerEvents(this, MobPlugin.getMobPlugin());
 	}
@@ -188,6 +192,18 @@ public class ControlledMob implements Listener
 		_controlled.setVelocity(velocity);
 	}
 	
+	public boolean isBackpack()
+	{
+		return isBackpack;
+	}
+
+
+	public void setBackpack(boolean isBackpack)
+	{
+		this.isBackpack = isBackpack;
+	}
+
+
 	@Override
 	public String toString()
 	{

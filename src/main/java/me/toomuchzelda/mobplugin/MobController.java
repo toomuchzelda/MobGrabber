@@ -1,5 +1,7 @@
 package me.toomuchzelda.mobplugin;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map.Entry;
@@ -39,6 +41,7 @@ import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
 
+import net.md_5.bungee.api.ChatColor;
 import net.minecraft.world.entity.animal.Pig;
 
 /**
@@ -304,17 +307,6 @@ public class MobController implements Listener
 		nmsPig.moveTo(heldLocation.getX(), heldLocation.getY(), heldLocation.getZ());
 	}
 
-	public static void drawGrabbedParticle(ControlledMob grabbed)
-	{
-		Location loc = grabbed.getMount().getLocation();
-		loc.add(0, grabbed.getMount().getHeight(), 0);
-		
-		DustOptions colour = new DustOptions(org.bukkit.Color.ORANGE, 2);
-		
-		loc.getWorld().spawnParticle(Particle.REDSTONE, loc.getX(), loc.getY(), loc.getZ(), 0, 
-				0, 0, 0, 10, colour);
-	}
-	
 	//calculate the location grabbed mobs should be held at
 	public static Location calculateHeldLoc(Player grabber, LivingEntity grabbed, double holdingDistance)
 	{
@@ -460,6 +452,9 @@ public class MobController implements Listener
 			}
 		}
 	}
+	
+	//put grabber item into offhand - backpack mode
+	
 
 	//put the hotbar slot to slot 4 for optimal distance scrolling
 	@EventHandler
@@ -499,6 +494,17 @@ public class MobController implements Listener
 			start.getWorld().spawnParticle(Particle.SPELL_INSTANT, stepLoc, 1);
 		}
 	}
+	
+	public static void drawGrabbedParticle(ControlledMob grabbed)
+	{
+		Location loc = grabbed.getMount().getLocation();
+		loc.add(0, grabbed.getMount().getHeight(), 0);
+		
+		DustOptions colour = new DustOptions(org.bukkit.Color.ORANGE, 2);
+		
+		loc.getWorld().spawnParticle(Particle.REDSTONE, loc.getX(), loc.getY(), loc.getZ(), 0, 
+				0, 0, 0, 10, colour);
+	}
 
 	//adjust holding distance when shift+scroll hotbar
 	@EventHandler
@@ -510,26 +516,39 @@ public class MobController implements Listener
 			int from = event.getPreviousSlot();
 			int to = event.getNewSlot();
 			int difference = from - to;
+			
+			Player p = event.getPlayer();
 
 			//event.getPlayer().sendMessage("from=" + event.getPreviousSlot() + " to=" + event.getNewSlot() +
 			//		"diff=" + difference);
 
-			ControlledMob mob = _controllerMap.get(event.getPlayer());
+			ControlledMob mob = _controllerMap.get(p);
+			
+			ChatColor numColour;
 
-			if(mob.getDistance() + difference < minDistance)
+			if(mob.getDistance() + difference <= minDistance)
 			{
 				mob.setDistance(minDistance);
-				event.getPlayer().sendMessage("§8You can't hold " + mob.getMob().getName() + " any closer");
+				//p.sendMessage("§8You can't hold " + mob.getMob().getName() + " any closer");
+				numColour = ChatColor.RED;
 			}
-			else if(mob.getDistance() + difference > maxDistance)
+			else if(mob.getDistance() + difference >= maxDistance)
 			{
 				mob.setDistance(maxDistance);
-				event.getPlayer().sendMessage("§8You can't hold " + mob.getMob().getName() + " any further");
+				//p.sendMessage("§8You can't hold " + mob.getMob().getName() + " any further");
+				numColour = ChatColor.RED;
 			}
 			else
 			{
 				mob.setDistance(mob.getDistance() + difference);
+				numColour = ChatColor.GRAY;
 			}
+			
+			//cool effect
+			String sub = ChatColor.DARK_GRAY + "Distance: " + numColour + round(mob.getDistance(), 2) + 
+					" blocks";
+			
+			p.sendTitle(" ", sub, 1, 30, 1);
 
 			event.setCancelled(true);
 		}
@@ -644,5 +663,17 @@ public class MobController implements Listener
 			//only removes if controlled
 			removeEffectsByGrabbed(event.getPlayer());
 		}
+	}
+	
+	
+	//https://stackoverflow.com/questions/2808535/round-a-double-to-2-decimal-places
+	//https://stackoverflow.com/a/2808648
+	//taken on 27/06/2021
+	public static double round(double value, int places) {
+	    if (places < 0) throw new IllegalArgumentException();
+
+	    BigDecimal bd = BigDecimal.valueOf(value);
+	    bd = bd.setScale(places, RoundingMode.HALF_UP);
+	    return bd.doubleValue();
 	}
 }
