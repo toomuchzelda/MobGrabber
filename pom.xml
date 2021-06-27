@@ -77,6 +77,10 @@
 			<classifier>remapped-mojang</classifier>
 			<scope>provided</scope>
 		</dependency>
+		<dependency>
+			<groupId>com.comphenix.protocol</groupId>
+			<artifactId>ProtocolLib</artifactId>
+			<version>4.7.0-SNAPSHOT</version>
+		</dependency>
 	</dependencies>
-
 </project>

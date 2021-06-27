@@ -4,6 +4,7 @@ import org.bukkit.Location;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Pig;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
@@ -17,6 +18,7 @@ import org.bukkit.util.Vector;
  */
 public class ControlledMob implements Listener
 {
+	private Player _grabber;
 	private LivingEntity _controlled;
 	private Pig _mount;
 	
@@ -40,12 +42,13 @@ public class ControlledMob implements Listener
 	/**
 	 * @param controlled The LivingEntity to be grabbed
 	 */
-	public ControlledMob(LivingEntity controlled, double distance, int slot)
+	public ControlledMob(Player grabber, LivingEntity controlled, double distance, int slot)
 	{
 		_controlled = controlled;
+		_grabber = grabber;
 		
 		_mount = (Pig) _controlled.getWorld().spawnEntity(_controlled.getLocation(), EntityType.PIG);
-		_mount.setInvisible(true);
+		//_mount.setInvisible(true);
 		_mount.setBaby();
 		_mount.setAgeLock(true);
 		_mount.setGravity(false);
@@ -198,12 +201,25 @@ public class ControlledMob implements Listener
 	}
 
 
-	public void setBackpack(boolean isBackpack)
+	public void setBackpack()
 	{
-		this.isBackpack = isBackpack;
+		this.isBackpack = true;
+	}
+	
+	public void setNotBackpack()
+	{
+		this.isBackpack = false;
 	}
 
-
+	//tell the grabber not to collide with other entities
+	//either send a packet 'modifying' their current team
+	//or 'creating' a new one to do this
+	//only do on packet level to not mess with players/other plugins' actual teams
+	public void sendDontCollidePacket()
+	{
+		
+	}
+	
 	@Override
 	public String toString()
 	{

@@ -18,7 +18,6 @@ import org.bukkit.Particle.DustOptions;
 import org.bukkit.World;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.craftbukkit.v1_17_R1.entity.CraftPig;
-import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
@@ -34,6 +33,7 @@ import org.bukkit.event.player.PlayerItemHeldEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerToggleSneakEvent;
 import org.bukkit.event.vehicle.VehicleExitEvent;
+import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.ShapedRecipe;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -113,13 +113,13 @@ public class MobController implements Listener
 			Bukkit.addRecipe(recipe);
 		}
 	}
-	
-//	@EventHandler
-//	public void printInteract(PlayerInteractEvent event)
-//	{
-//		//if(event.getPlayer().is)
-//		event.getPlayer().sendMessage(event.getAction().toString());
-//	}
+
+	//	@EventHandler
+	//	public void printInteract(PlayerInteractEvent event)
+	//	{
+	//		//if(event.getPlayer().is)
+	//		event.getPlayer().sendMessage(event.getAction().toString());
+	//	}
 
 	@EventHandler
 	public void onRightClick(PlayerInteractEvent event)
@@ -131,72 +131,91 @@ public class MobController implements Listener
 				//compare the item held disregarding amount in stack
 				ItemStack item = event.getItem().clone();
 				item.setAmount(1);
-				if(item.equals(_controllerItem) && _controllerMap.get(event.getPlayer()) == null)
+				if(item.equals(_controllerItem))
 				{
-					//perform a raytrace to see if they're targetting an entity or not
-					World world = event.getPlayer().getWorld();
-					Player p = event.getPlayer();
-
-					//uuuuuuhhhhhh
-					Predicate<Entity> notUserOrSpectator = new Predicate<Entity>()
+					if(_controllerMap.get(event.getPlayer()) == null)
 					{
+						//perform a raytrace to see if they're targetting an entity or not
+						World world = event.getPlayer().getWorld();
+						Player p = event.getPlayer();
 
-						@Override
-						public boolean test(Entity e) {
-							boolean bool = false;
-							if(e.getEntityId() != p.getEntityId())
-							{
-								bool = true;
-								if(e instanceof Player)
+						//uuuuuuhhhhhh
+						Predicate<Entity> notUserOrSpectator = new Predicate<Entity>()
+						{
+
+							@Override
+							public boolean test(Entity e) {
+								boolean bool = false;
+								if(e.getEntityId() != p.getEntityId())
 								{
-									Player rayPlayer = (Player) e;
-									if(rayPlayer.getGameMode().equals(GameMode.SPECTATOR))
+									bool = true;
+									if(e instanceof Player)
 									{
-										bool = false;
+										Player rayPlayer = (Player) e;
+										if(rayPlayer.getGameMode().equals(GameMode.SPECTATOR))
+										{
+											bool = false;
+										}
 									}
 								}
+								return bool;
 							}
-							return bool;
-						}
-					};
+						};
 
-					RayTraceResult result = world.rayTrace(p.getEyeLocation(), p.getLocation().getDirection()
-							, maxDistance, FluidCollisionMode.NEVER, true, 0, notUserOrSpectator);
+						RayTraceResult result = world.rayTrace(p.getEyeLocation(), p.getLocation().getDirection()
+								, maxDistance, FluidCollisionMode.NEVER, true, 0, notUserOrSpectator);
 
-					drawParticleLine(p.getEyeLocation(), p.getLocation().getDirection(), maxDistance);
+						drawParticleLine(p.getEyeLocation(), p.getLocation().getDirection(), maxDistance);
 
-					//if the raytrace hit an entity
-					if(result != null && result.getHitBlock() == null && result.getHitEntity() != null)
-					{
-						if(result.getHitEntity() instanceof LivingEntity)
+						//if the raytrace hit an entity
+						if(result != null && result.getHitBlock() == null && result.getHitEntity() != null)
 						{
-							//p.sendMessage(result.getHitEntity().getName());
-							//Vector difference = result.getHitPosition().subtract(p.getEyeLocation().toVector());
-							//double distance = difference.length();
-							//p.sendMessage("Distance " + distance);
-							LivingEntity livent = (LivingEntity) result.getHitEntity();
-
-							if(isControlled(event.getPlayer()) && result.getHitEntity() instanceof Player)
+							if(result.getHitEntity() instanceof LivingEntity)
 							{
-								//Player controller = (Player) result.getHitEntity();
-								ControlledMob mob = _controllerMap.get(result.getHitEntity());
-								if(mob != null && mob.getMob() == p)
+								//p.sendMessage(result.getHitEntity().getName());
+								//Vector difference = result.getHitPosition().subtract(p.getEyeLocation().toVector());
+								//double distance = difference.length();
+								//p.sendMessage("Distance " + distance);
+								LivingEntity livent = (LivingEntity) result.getHitEntity();
+
+								if(isControlled(event.getPlayer()) && result.getHitEntity() instanceof Player)
 								{
-									p.sendMessage("You can't grab someone who's grabbing you!");
+									//Player controller = (Player) result.getHitEntity();
+									ControlledMob mob = _controllerMap.get(result.getHitEntity());
+									if(mob != null && mob.getMob() == p)
+									{
+										p.sendMessage("You can't grab someone who's grabbing you!");
+									}
+								}
+								else if(!isControlled(livent))
+								{
+									//false if main hand, true if offhand
+									setControlling(p, livent, !(event.getHand() == EquipmentSlot.HAND));
+
+									//p.sendMessage(_controllerMap.toString());
+									//p.sendMessage("===================");
+								}
+								else
+								{
+									p.sendMessage("Someone else is grabbing " + livent.getName());
 								}
 							}
-							else if(!isControlled(livent))
-							{
-								setControlling(p, livent);
-
-								//p.sendMessage(_controllerMap.toString());
-								//p.sendMessage("===================");
-							}
-							else
-							{
-								p.sendMessage("Someone else is grabbing " + livent.getName());
-							}
 						}
+					}
+					else
+					{
+						event.getPlayer().sendMessage("rclick while controllling");
+						
+						ControlledMob mob = _controllerMap.get(event.getPlayer());
+						String grabbedName = mob.getMob().getName();
+						event.getPlayer().sendMessage("§8Dropped " + grabbedName);
+						//setNotControlling(event.getPlayer());
+
+						removeControlledEffects(event.getPlayer());
+						//only throw velocity on intentional drops?
+						mob.applyVelocity();
+
+						_controllerMap.remove(event.getPlayer());
 					}
 				}
 			}
@@ -215,17 +234,17 @@ public class MobController implements Listener
 				removeControlledEffects(event.getPlayer());
 				Vector toss = mob.getMob().getLocation().toVector().subtract(event.getPlayer()
 						.getLocation().toVector());
-	
+
 				toss.multiply(0.3);
 				mob.getMob().setVelocity(toss);
 				event.getPlayer().sendMessage("§8Threw " + mob.getMob().getName());
-	
+
 				_controllerMap.remove(event.getPlayer());
 			}
 		}
 	}
 
-	public static void setControlling(Player user, LivingEntity target)
+	public static void setControlling(Player user, LivingEntity target, boolean offHandUsed)
 	{
 		if(_controllerMap.get(user) == null)
 		{
@@ -238,16 +257,22 @@ public class MobController implements Listener
 
 			if(!isPaperMC)
 			{
-				target.teleport(calculateHeldLoc(user, target, distance));
+				if(!offHandUsed)
+					target.teleport(calculateHeldLoc(user, target, distance));
+				else
+					target.teleport(calculateBackLoc(user, target));
 			}
 
 			int slot = user.getInventory().getHeldItemSlot();
 
-			ctrlMob = new ControlledMob(target, distance, slot);
+			ctrlMob = new ControlledMob(user, target, distance, slot);
 
 			ctrlMob.mountPlayer();
 
 			_controllerMap.put(user, ctrlMob);
+
+			if(offHandUsed)
+				ctrlMob.setBackpack();
 		}
 	}
 
@@ -262,6 +287,12 @@ public class MobController implements Listener
 	{
 		ControlledMob ctrlMob = _controllerMap.get(user);
 		//LivingEntity controlled = ctrlMob.getMob();
+
+		if(ctrlMob.isBackpack())
+		{
+			ctrlMob.setNotBackpack();
+			user.sendMessage("set not backpack");
+		}
 
 		ctrlMob.unMountMob();
 		ctrlMob.removeMount();
@@ -280,7 +311,8 @@ public class MobController implements Listener
 					Entry<Player, ControlledMob> entry = iter.next();
 
 					moveGrabbedMob(entry.getKey(), entry.getValue());
-					drawGrabbedParticle(entry.getValue());
+					if(!entry.getValue().isBackpack())
+						drawGrabbedParticle(entry.getValue());
 				}
 			}
 
@@ -289,11 +321,13 @@ public class MobController implements Listener
 
 	public static void moveGrabbedMob(Player grabber, ControlledMob grabbed)
 	{
-		Location heldLocation = calculateHeldLoc(grabber, grabbed.getMob(), grabbed.getDistance());
+		Location heldLocation;
 
-		//https://www.spigotmc.org/threads/get-nms-class-from-bukkit-class.285298/
-		//https://www.sSilverfishotmc.org/threads/helping-to-teleport-a-packet-entity-with-passenger.358136/
-		//use NMS mob because teleporting a bukkit entity with passengers doesnt work
+		if(grabbed.isBackpack())
+			heldLocation = calculateBackLoc(grabber, grabbed.getMob());
+		else
+			heldLocation = calculateHeldLoc(grabber, grabbed.getMob(), grabbed.getDistance());
+
 
 		//EntityPig nmsPig = ((CraftPig) grabbed.getMount()).getHandle();
 		//nmsPig.setLocation(heldLocation.getX(), heldLocation.getY(), heldLocation.getZ(), heldLocation.getYaw(), heldLocation.getPitch());
@@ -303,8 +337,14 @@ public class MobController implements Listener
 		Vector currentVelocity = heldLocation.toVector().subtract(grabbed.getMount().getLocation().toVector());
 		grabbed.setVelocity(currentVelocity);
 
+		//https://www.spigotmc.org/threads/get-nms-class-from-bukkit-class.285298/
+		//https://www.sSilverfishotmc.org/threads/helping-to-teleport-a-packet-entity-with-passenger.358136/
+		//use NMS mob because teleporting a bukkit entity with passengers doesnt work
+		float pitch = (float) heldLocation.getPitch();
+		float yaw = (float) heldLocation.getYaw();
+
 		Pig nmsPig = ((CraftPig) grabbed.getMount()).getHandle();
-		nmsPig.moveTo(heldLocation.getX(), heldLocation.getY(), heldLocation.getZ());
+		nmsPig.moveTo(heldLocation.getX(), heldLocation.getY(), heldLocation.getZ(), yaw, pitch);
 	}
 
 	//calculate the location grabbed mobs should be held at
@@ -341,10 +381,26 @@ public class MobController implements Listener
 		else
 		{
 			heldLoc.add(0, -(grabbed.getHeight() / 2), 0);
-			heldLoc.setDirection(grabbed.getLocation().getDirection());
 		}
 
+		heldLoc.setDirection(grabbed.getLocation().getDirection());
+
 		return heldLoc;
+	}
+
+	public static Location calculateBackLoc(Player grabber, LivingEntity grabbed)
+	{
+		Location loc = grabber.getLocation().clone();
+		Vector backwards = grabber.getLocation().getDirection().clone();
+		backwards.setY(0).normalize();
+		backwards.multiply(-grabbed.getWidth());
+
+		loc.setY(loc.getY() + 0.7d);
+
+		loc.add(backwards);
+		loc.setDirection(grabber.getLocation().getDirection());
+
+		return loc;
 	}
 
 	public static boolean isControlled(LivingEntity controlled)
@@ -427,34 +483,34 @@ public class MobController implements Listener
 	//	}
 
 	//grabber drops their mobgrab item to release grabbed
-	@EventHandler
-	public void onDropGrabberItem(PlayerDropItemEvent event)
-	{
-		if(_controllerMap.get(event.getPlayer()) != null)
-		{
-			ControlledMob mob = _controllerMap.get(event.getPlayer());
+//	@EventHandler
+//	public void onDropGrabberItem(PlayerDropItemEvent event)
+//	{
+//		if(_controllerMap.get(event.getPlayer()) != null)
+//		{
+//			ControlledMob mob = _controllerMap.get(event.getPlayer());
+//
+//			ItemStack dropped = event.getItemDrop().getItemStack().clone();
+//			dropped.setAmount(1);
+//
+//			if(dropped.equals(_controllerItem))
+//			{
+//				event.setCancelled(true);
+//				String grabbedName = mob.getMob().getName();
+//				event.getPlayer().sendMessage("§8Dropped " + grabbedName);
+//				//setNotControlling(event.getPlayer());
+//
+//				removeControlledEffects(event.getPlayer());
+//				//only throw velocity on intentional drops?
+//				mob.applyVelocity();
+//
+//				_controllerMap.remove(event.getPlayer());
+//			}
+//		}
+//	}
 
-			ItemStack dropped = event.getItemDrop().getItemStack().clone();
-			dropped.setAmount(1);
-
-			if(dropped.equals(_controllerItem))
-			{
-				event.setCancelled(true);
-				String grabbedName = mob.getMob().getName();
-				event.getPlayer().sendMessage("§8Dropped " + grabbedName);
-				//setNotControlling(event.getPlayer());
-
-				removeControlledEffects(event.getPlayer());
-				//only throw velocity on intentional drops?
-				mob.applyVelocity();
-
-				_controllerMap.remove(event.getPlayer());
-			}
-		}
-	}
-	
 	//put grabber item into offhand - backpack mode
-	
+
 
 	//put the hotbar slot to slot 4 for optimal distance scrolling
 	@EventHandler
@@ -494,14 +550,14 @@ public class MobController implements Listener
 			start.getWorld().spawnParticle(Particle.SPELL_INSTANT, stepLoc, 1);
 		}
 	}
-	
+
 	public static void drawGrabbedParticle(ControlledMob grabbed)
 	{
 		Location loc = grabbed.getMount().getLocation();
 		loc.add(0, grabbed.getMount().getHeight(), 0);
-		
+
 		DustOptions colour = new DustOptions(org.bukkit.Color.ORANGE, 2);
-		
+
 		loc.getWorld().spawnParticle(Particle.REDSTONE, loc.getX(), loc.getY(), loc.getZ(), 0, 
 				0, 0, 0, 10, colour);
 	}
@@ -516,14 +572,14 @@ public class MobController implements Listener
 			int from = event.getPreviousSlot();
 			int to = event.getNewSlot();
 			int difference = from - to;
-			
+
 			Player p = event.getPlayer();
 
 			//event.getPlayer().sendMessage("from=" + event.getPreviousSlot() + " to=" + event.getNewSlot() +
 			//		"diff=" + difference);
 
 			ControlledMob mob = _controllerMap.get(p);
-			
+
 			ChatColor numColour;
 
 			if(mob.getDistance() + difference <= minDistance)
@@ -543,11 +599,11 @@ public class MobController implements Listener
 				mob.setDistance(mob.getDistance() + difference);
 				numColour = ChatColor.GRAY;
 			}
-			
+
 			//cool effect
 			String sub = ChatColor.DARK_GRAY + "Distance: " + numColour + round(mob.getDistance(), 2) + 
 					" blocks";
-			
+
 			p.sendTitle(" ", sub, 1, 30, 1);
 
 			event.setCancelled(true);
@@ -664,16 +720,16 @@ public class MobController implements Listener
 			removeEffectsByGrabbed(event.getPlayer());
 		}
 	}
-	
-	
+
+
 	//https://stackoverflow.com/questions/2808535/round-a-double-to-2-decimal-places
 	//https://stackoverflow.com/a/2808648
 	//taken on 27/06/2021
 	public static double round(double value, int places) {
-	    if (places < 0) throw new IllegalArgumentException();
+		if (places < 0) throw new IllegalArgumentException();
 
-	    BigDecimal bd = BigDecimal.valueOf(value);
-	    bd = bd.setScale(places, RoundingMode.HALF_UP);
-	    return bd.doubleValue();
+		BigDecimal bd = BigDecimal.valueOf(value);
+		bd = bd.setScale(places, RoundingMode.HALF_UP);
+		return bd.doubleValue();
 	}
 }
