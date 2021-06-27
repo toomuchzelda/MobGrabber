@@ -38,6 +38,10 @@ public class ControlledMob implements Listener
 	
 	//ratchet and clank
 	private boolean isBackpack;
+	
+	//hack to avoid throwing the mob when just dropping the item.
+	public boolean tossed = false;
+	
 
 	/**
 	 * @param controlled The LivingEntity to be grabbed
@@ -48,7 +52,7 @@ public class ControlledMob implements Listener
 		_grabber = grabber;
 		
 		_mount = (Pig) _controlled.getWorld().spawnEntity(_controlled.getLocation(), EntityType.PIG);
-		//_mount.setInvisible(true);
+		_mount.setInvisible(true);
 		_mount.setBaby();
 		_mount.setAgeLock(true);
 		_mount.setGravity(false);

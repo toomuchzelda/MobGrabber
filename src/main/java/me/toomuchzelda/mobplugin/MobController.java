@@ -114,12 +114,12 @@ public class MobController implements Listener
 		}
 	}
 
-	//	@EventHandler
-	//	public void printInteract(PlayerInteractEvent event)
-	//	{
-	//		//if(event.getPlayer().is)
-	//		event.getPlayer().sendMessage(event.getAction().toString());
-	//	}
+//		@EventHandler
+//		public void printInteract(PlayerInteractEvent event)
+//		{
+//			//if(event.getPlayer().is)
+//			event.getPlayer().sendMessage(event.getAction().toString());
+//		}
 
 	@EventHandler
 	public void onRightClick(PlayerInteractEvent event)
@@ -204,8 +204,6 @@ public class MobController implements Listener
 					}
 					else
 					{
-						event.getPlayer().sendMessage("rclick while controllling");
-						
 						ControlledMob mob = _controllerMap.get(event.getPlayer());
 						String grabbedName = mob.getMob().getName();
 						event.getPlayer().sendMessage("§8Dropped " + grabbedName);
@@ -231,15 +229,25 @@ public class MobController implements Listener
 					&& _controllerMap.get(event.getPlayer()) != null)
 			{
 				ControlledMob mob = _controllerMap.get(event.getPlayer());
-				removeControlledEffects(event.getPlayer());
-				Vector toss = mob.getMob().getLocation().toVector().subtract(event.getPlayer()
-						.getLocation().toVector());
+				
+				if(!mob.tossed)
+				{
+					removeControlledEffects(event.getPlayer());
+					Vector toss = mob.getMob().getLocation().toVector().subtract(event.getPlayer()
+							.getLocation().toVector());
 
-				toss.multiply(0.3);
-				mob.getMob().setVelocity(toss);
-				event.getPlayer().sendMessage("§8Threw " + mob.getMob().getName());
+					toss.multiply(0.3);
+					mob.getMob().setVelocity(toss);
+					event.getPlayer().sendMessage("§8Threw " + mob.getMob().getName());
 
-				_controllerMap.remove(event.getPlayer());
+					_controllerMap.remove(event.getPlayer());
+				}
+				else
+				{
+					//if it was true, the method was called by dropping the item from
+					//onDropGrabberItem so don't throw the mob and reset this bool
+					mob.tossed = false;
+				}
 			}
 		}
 	}
@@ -482,32 +490,29 @@ public class MobController implements Listener
 	//		}
 	//	}
 
-	//grabber drops their mobgrab item to release grabbed
-//	@EventHandler
-//	public void onDropGrabberItem(PlayerDropItemEvent event)
-//	{
-//		if(_controllerMap.get(event.getPlayer()) != null)
-//		{
-//			ControlledMob mob = _controllerMap.get(event.getPlayer());
-//
-//			ItemStack dropped = event.getItemDrop().getItemStack().clone();
-//			dropped.setAmount(1);
-//
-//			if(dropped.equals(_controllerItem))
-//			{
-//				event.setCancelled(true);
-//				String grabbedName = mob.getMob().getName();
-//				event.getPlayer().sendMessage("§8Dropped " + grabbedName);
-//				//setNotControlling(event.getPlayer());
-//
-//				removeControlledEffects(event.getPlayer());
-//				//only throw velocity on intentional drops?
-//				mob.applyVelocity();
-//
-//				_controllerMap.remove(event.getPlayer());
-//			}
-//		}
-//	}
+	//stop from dropping item while grabbing
+	@EventHandler
+	public void onDropGrabberItem(PlayerDropItemEvent event)
+	{
+		if(_controllerMap.get(event.getPlayer()) != null)
+		{
+			ControlledMob mob = _controllerMap.get(event.getPlayer());
+
+			ItemStack dropped = event.getItemDrop().getItemStack().clone();
+			dropped.setAmount(1);
+
+			if(dropped.equals(_controllerItem))
+			{
+				event.setCancelled(true);
+				String grabbedName = mob.getMob().getName();
+				event.getPlayer().sendMessage(ChatColor.GRAY + "Can't drop this while holding " + grabbedName);
+				
+				//hack to stop the left-click PlayerInteractEvent from firing
+				//and throwing the grabbed mob
+				mob.tossed = true;
+			}
+		}
+	}
 
 	//put grabber item into offhand - backpack mode
 
@@ -635,14 +640,14 @@ public class MobController implements Listener
 	@EventHandler
 	public void vehicleExit(VehicleExitEvent event)
 	{
-		Bukkit.broadcastMessage("vvehicle exit triggerd");
+		//Bukkit.broadcastMessage("vvehicle exit triggerd");
 
 		LivingEntity livent = event.getExited();
 
 		//f(!livent.getLocation().getBlock().getBlockData().getMaterial().equals(Material.WATER))
 		if(!livent.isInWater())
 		{
-			Bukkit.broadcastMessage("dsimounted not in water");
+			//Bukkit.broadcastMessage("dsimounted not in water");
 			freeIfControlled(livent);
 		}
 		else
@@ -652,7 +657,7 @@ public class MobController implements Listener
 				Player p = (Player) livent;
 				if(p.isSneaking())
 				{
-					Bukkit.broadcastMessage("dismounted sneaking in water");
+					//Bukkit.broadcastMessage("dismounted sneaking in water");
 					freeIfControlled(p);
 
 					//avoid cancelling event
@@ -661,7 +666,7 @@ public class MobController implements Listener
 			}
 			//cancel if they're dismounting coz of entering water,
 			//but not if they're sneaking (voluntarily leaving)
-			Bukkit.broadcastMessage("cancelled event");
+			//Bukkit.broadcastMessage("cancelled event");
 			event.setCancelled(true);
 		}
 	}
