@@ -1,5 +1,11 @@
 package me.toomuchzelda.mobplugin;
 
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Optional;
+
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.LivingEntity;
@@ -10,7 +16,18 @@ import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDamageEvent.DamageCause;
+import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.scoreboard.Scoreboard;
+import org.bukkit.scoreboard.Team;
 import org.bukkit.util.Vector;
+
+import com.comphenix.protocol.PacketType;
+import com.comphenix.protocol.ProtocolLibrary;
+import com.comphenix.protocol.events.PacketContainer;
+
+import net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket;
+import net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket.Parameters;
+import net.minecraft.world.scores.PlayerTeam;
 
 /**
  * @author toomuchzelda
@@ -217,11 +234,118 @@ public class ControlledMob implements Listener
 
 	//tell the grabber not to collide with other entities
 	//either send a packet 'modifying' their current team
-	//or 'creating' a new one to do this
+	//or 'creating' a new team to do this
 	//only do on packet level to not mess with players/other plugins' actual teams
-	public void sendDontCollidePacket()
+	@EventHandler
+	public void sendDontCollidePacket(PlayerInteractEvent event)
 	{
+		Team team = _grabber.getScoreboard().getEntryTeam(_grabber.getName());
 		
+		
+		if(team != null)
+		{
+			//make team update packet with collision off and send to them
+			PacketContainer newTeamPacket = new PacketContainer(PacketType.Play.Server.SCOREBOARD_TEAM);
+			
+			//team name
+			String name = _grabber.getScoreboard().getEntryTeam(_grabber.getName()).getName();
+			
+			//_grabber.sendMessage("team name=" + name);
+			
+			newTeamPacket.getStrings().write(0, name);
+			
+			//update scoreboard mode
+			newTeamPacket.getIntegers().write(0, 2);
+			
+			//player collection. perhaps only players in team?
+			Collection<String> players = new ArrayList<String>();
+			players.add(_grabber.getName());
+			players.add(_mount.getUniqueId().toString());
+			//_grabber.sendMessage("UUID To string: " + _mount.getUniqueId().toString());
+			
+			String ctrld = _controlled instanceof Player ? _controlled.getName() : 
+				_controlled.getUniqueId().toString();
+			players.add(ctrld);
+			
+			newTeamPacket.getModifier().write(2, players);
+			
+			Scoreboard bukkitScoreboard = team.getScoreboard();
+			PlayerTeam nmsTeam = null;
+			net.minecraft.world.scores.Scoreboard nmsScoreboard = null;
+			
+			try
+			{
+				Field teamField = Class.forName("org.bukkit.craftbukkit.v1_17_R1.scoreboard.CraftTeam").getDeclaredField("team");
+	            teamField.setAccessible(true);
+	
+	            nmsTeam = (PlayerTeam) teamField.get(team);
+	            
+	            _grabber.sendMessage("nms name:" + nmsTeam.getName());
+				_grabber.sendMessage("Collisions:" + nmsTeam.getCollisionRule().toString());
+				_grabber.sendMessage("type: " + nmsTeam.getClass().getCanonicalName());
+				
+//				if(bukkitScoreboard != null)
+//				{
+//					Field boardField = Class.forName("org.bukkit.craftbukkit.v1_17_R1.scoreboard.CraftScoreboard")
+//							.getDeclaredField("board");
+//		            boardField.setAccessible(true);
+//		            
+//		            nmsScoreboard = (net.minecraft.world.scores.Scoreboard) boardField.get(bukkitScoreboard);
+//		            
+////		            Collection<String> s = nmsScoreboard.getTeamNames();
+////		            for(String sname : s)
+////		            {
+////		            	_grabber.sendMessage("team" + sname);
+////		            }
+//				}
+//				else
+//				{
+//					_grabber.sendMessage("bukkit scoreboard null");
+//				}
+				
+				//create team options field of packet
+				ClientboundSetPlayerTeamPacket.Parameters packetParams = new ClientboundSetPlayerTeamPacket.Parameters(nmsTeam);
+				_grabber.sendMessage("created params");
+				
+				//set collision to never
+				//Field colParam = packetParams.getClass().getDeclaredField("collisionRule");
+				Class<?>[] paramClassArr = ClientboundSetPlayerTeamPacket.class.getDeclaredClasses();
+				
+//				Field[] fields = paramClassArr[0].getDeclaredFields();
+//				for(Field fd : fields)
+//				{
+//					fd.setAccessible(true);
+//					_grabber.sendMessage(fd.getName());
+//				}
+				
+				//field still obfuscated? at runtime anyway at least
+				Field colParam = paramClassArr[0].getDeclaredField("e");
+				colParam.setAccessible(true);
+				colParam.set(packetParams, "never");
+				_grabber.sendMessage("reflected and set coll to never");
+				
+				//create optional object
+				Optional<Parameters> option = Optional.of(packetParams);
+				
+				//put options params into packet
+				newTeamPacket.getModifier().write(3, option);
+				
+				//send packet
+				ProtocolLibrary.getProtocolManager().sendServerPacket(_grabber, newTeamPacket);
+				_grabber.sendMessage("sent packet");
+				
+			}
+			catch(Exception e)
+			{
+				e.printStackTrace();
+				Bukkit.broadcastMessage(e.getMessage());
+				return;
+			}
+		}
+		else
+		{
+			//make new team packet with collision off and send it to them
+		}
 	}
 	
 	@Override

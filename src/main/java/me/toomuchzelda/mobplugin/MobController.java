@@ -114,12 +114,12 @@ public class MobController implements Listener
 		}
 	}
 
-//		@EventHandler
-//		public void printInteract(PlayerInteractEvent event)
-//		{
-//			//if(event.getPlayer().is)
-//			event.getPlayer().sendMessage(event.getAction().toString());
-//		}
+//	@EventHandler
+//	public void printInteract(PlayerInteractEvent event)
+//	{
+//		//if(event.getPlayer().is)
+//		event.getPlayer().sendMessage(event.getAction().toString());
+//	}
 
 	@EventHandler
 	public void onRightClick(PlayerInteractEvent event)
@@ -191,6 +191,7 @@ public class MobController implements Listener
 								{
 									//false if main hand, true if offhand
 									setControlling(p, livent, !(event.getHand() == EquipmentSlot.HAND));
+									p.sendMessage(ChatColor.DARK_GRAY + "Grabbed " + livent.getName());
 
 									//p.sendMessage(_controllerMap.toString());
 									//p.sendMessage("===================");
@@ -401,7 +402,7 @@ public class MobController implements Listener
 		Location loc = grabber.getLocation().clone();
 		Vector backwards = grabber.getLocation().getDirection().clone();
 		backwards.setY(0).normalize();
-		backwards.multiply(-grabbed.getWidth());
+		backwards.multiply(-grabbed.getWidth() + 0.3);
 
 		loc.setY(loc.getY() + 0.7d);
 
@@ -564,7 +565,7 @@ public class MobController implements Listener
 		DustOptions colour = new DustOptions(org.bukkit.Color.ORANGE, 2);
 
 		loc.getWorld().spawnParticle(Particle.REDSTONE, loc.getX(), loc.getY(), loc.getZ(), 0, 
-				0, 0, 0, 10, colour);
+				0, 0, 0, 100, colour);
 	}
 
 	//adjust holding distance when shift+scroll hotbar
