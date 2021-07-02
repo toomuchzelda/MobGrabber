@@ -17,7 +17,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDamageEvent.DamageCause;
 import org.bukkit.event.player.PlayerInteractEvent;
-import org.bukkit.scoreboard.Scoreboard;
+import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.scoreboard.Team;
 import org.bukkit.util.Vector;
 
@@ -241,7 +241,6 @@ public class ControlledMob implements Listener
 	{
 		Team team = _grabber.getScoreboard().getEntryTeam(_grabber.getName());
 		
-		
 		if(team != null)
 		{
 			//make team update packet with collision off and send to them
@@ -269,9 +268,7 @@ public class ControlledMob implements Listener
 			
 			newTeamPacket.getModifier().write(2, players);
 			
-			Scoreboard bukkitScoreboard = team.getScoreboard();
 			PlayerTeam nmsTeam = null;
-			net.minecraft.world.scores.Scoreboard nmsScoreboard = null;
 			
 			try
 			{
@@ -280,9 +277,9 @@ public class ControlledMob implements Listener
 	
 	            nmsTeam = (PlayerTeam) teamField.get(team);
 	            
-	            _grabber.sendMessage("nms name:" + nmsTeam.getName());
-				_grabber.sendMessage("Collisions:" + nmsTeam.getCollisionRule().toString());
-				_grabber.sendMessage("type: " + nmsTeam.getClass().getCanonicalName());
+//	            _grabber.sendMessage("nms name:" + nmsTeam.getName());
+//				_grabber.sendMessage("Collisions:" + nmsTeam.getCollisionRule().toString());
+//				_grabber.sendMessage("type: " + nmsTeam.getClass().getCanonicalName());
 				
 //				if(bukkitScoreboard != null)
 //				{
@@ -305,7 +302,7 @@ public class ControlledMob implements Listener
 				
 				//create team options field of packet
 				ClientboundSetPlayerTeamPacket.Parameters packetParams = new ClientboundSetPlayerTeamPacket.Parameters(nmsTeam);
-				_grabber.sendMessage("created params");
+				//_grabber.sendMessage("created params");
 				
 				//set collision to never
 				//Field colParam = packetParams.getClass().getDeclaredField("collisionRule");
@@ -322,7 +319,7 @@ public class ControlledMob implements Listener
 				Field colParam = paramClassArr[0].getDeclaredField("e");
 				colParam.setAccessible(true);
 				colParam.set(packetParams, "never");
-				_grabber.sendMessage("reflected and set coll to never");
+				//_grabber.sendMessage("reflected and set coll to never");
 				
 				//create optional object
 				Optional<Parameters> option = Optional.of(packetParams);
@@ -332,7 +329,7 @@ public class ControlledMob implements Listener
 				
 				//send packet
 				ProtocolLibrary.getProtocolManager().sendServerPacket(_grabber, newTeamPacket);
-				_grabber.sendMessage("sent packet");
+				//_grabber.sendMessage("sent packet");
 				
 			}
 			catch(Exception e)
@@ -365,5 +362,21 @@ public class ControlledMob implements Listener
 		if(event.getEntity() == _mount || 
 				(event.getEntity() == _controlled && event.getCause() == DamageCause.SUFFOCATION))
 			event.setCancelled(true);
+	}
+	
+	//turning backpack mode on/off
+	@EventHandler
+	public void onHandSwap(PlayerSwapHandItemsEvent event)
+	{
+		if(event.getMainHandItem().equals(MobController._controllerItem) && this.isBackpack())
+		{
+			this.setNotBackpack();
+			_grabber.sendMessage("setnotBP");
+		}
+		else if(event.getOffHandItem().equals(MobController._controllerItem) && !this.isBackpack())
+		{
+			this.setBackpack();
+			_grabber.sendMessage("setBP");
+		}
 	}
 }

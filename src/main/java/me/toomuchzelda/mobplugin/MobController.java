@@ -51,7 +51,7 @@ import net.minecraft.world.entity.animal.Pig;
  */
 public class MobController implements Listener
 {
-	public ItemStack _controllerItem;
+	public static ItemStack _controllerItem;
 	//						user,    target
 	private static HashMap<Player, ControlledMob> _controllerMap = new HashMap<>();
 

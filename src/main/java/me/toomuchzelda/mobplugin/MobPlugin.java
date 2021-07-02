@@ -47,7 +47,7 @@ public final class MobPlugin extends JavaPlugin
 			{
 				if(args.length == 0)
 				{
-					p.getInventory().addItem(_mobController._controllerItem);
+					p.getInventory().addItem(MobController._controllerItem);
 					sender.sendMessage("§9Given mob grabber");
 				}
 				else if(args.length > 0)
