@@ -66,7 +66,6 @@ public class ControlledMob implements Listener
 	//for putting player who's not in team into fake team with packets
 	//for disabling collision only for them
 	private static Team bpTeam;
-	private static PlayerTeam nmsBpTeam;
 
 	/**
 	 * @param controlled The LivingEntity to be grabbed
@@ -111,28 +110,27 @@ public class ControlledMob implements Listener
 		bpTeam = team;
 		Bukkit.getLogger().info("Created bukkit bp team");
 		
-		nmsBpTeam = getNMSTeam(bpTeam);
 	}
 	
-	private static PlayerTeam getNMSTeam(Team bukkitTeam)
-	{
-		PlayerTeam nmsTeam = null;
-		try
-		{
-			Field teamField = Class.forName("org.bukkit.craftbukkit.v1_17_R1.scoreboard.CraftTeam").getDeclaredField("team");
-	        teamField.setAccessible(true);
-	        nmsTeam = (PlayerTeam) teamField.get(bukkitTeam);
-		}
-		catch(Exception e)
-		{
-			e.printStackTrace();
-			Bukkit.getLogger().warning("Couldn't set up fake NMS team");
-		}
-		
-		Bukkit.getLogger().info("Created nms bp team");
-		
-		return nmsTeam;
-	}
+//	private static PlayerTeam getNMSTeam(Team bukkitTeam)
+//	{
+//		PlayerTeam nmsTeam = null;
+//		try
+//		{
+//			Field teamField = Class.forName("org.bukkit.craftbukkit.v1_17_R1.scoreboard.CraftTeam").getDeclaredField("team");
+//	        teamField.setAccessible(true);
+//	        nmsTeam = (PlayerTeam) teamField.get(bukkitTeam);
+//		}
+//		catch(Exception e)
+//		{
+//			e.printStackTrace();
+//			Bukkit.getLogger().warning("Couldn't set up fake NMS team");
+//		}
+//		
+//		Bukkit.getLogger().info("Created nms bp team");
+//		
+//		return nmsTeam;
+//	}
 
 	/**
 	 * If the controlled mob is a Player, put them on their Pig.
@@ -425,7 +423,7 @@ public class ControlledMob implements Listener
 				newTeamPacket.getModifier().write(3, noOption);
 				
 				ProtocolLibrary.getProtocolManager().sendServerPacket(_grabber, newTeamPacket);
-				_grabber.sendMessage("sent no team packet");
+				//_grabber.sendMessage("sent no team packet");
 			}
 			catch(Exception e)
 			{
@@ -478,15 +476,18 @@ public class ControlledMob implements Listener
 	@EventHandler
 	public void onHandSwap(PlayerSwapHandItemsEvent event)
 	{
-		if(event.getMainHandItem().equals(MobController._controllerItem) && this.isBackpack())
+		if(MobController.isAllowedBp())
 		{
-			this.setNotBackpack();
-			_grabber.sendMessage("setnotBP");
-		}
-		else if(event.getOffHandItem().equals(MobController._controllerItem) && !this.isBackpack())
-		{
-			this.setBackpack();
-			_grabber.sendMessage("setBP");
+			if(event.getMainHandItem().equals(MobController._controllerItem) && this.isBackpack())
+			{
+				this.setNotBackpack();
+				//_grabber.sendMessage("setnotBP");
+			}
+			else if(event.getOffHandItem().equals(MobController._controllerItem) && !this.isBackpack())
+			{
+				this.setBackpack();
+				//_grabber.sendMessage("setBP");
+			}
 		}
 	}
 }

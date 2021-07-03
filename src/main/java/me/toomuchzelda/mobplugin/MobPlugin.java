@@ -24,6 +24,7 @@ public final class MobPlugin extends JavaPlugin
 		config.addDefault("minimumDistance", 1.2d);
 		config.addDefault("maximumDistance", 30);
 		config.addDefault("craftable", true);
+		config.addDefault("allow-backpack", true);
 		
 		config.options().copyDefaults(true);
 		saveConfig();

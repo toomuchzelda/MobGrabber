@@ -18,6 +18,7 @@ import org.bukkit.Particle.DustOptions;
 import org.bukkit.World;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.craftbukkit.v1_17_R1.entity.CraftPig;
+import org.bukkit.entity.Ageable;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
@@ -63,6 +64,8 @@ public class MobController implements Listener
 
 	//for some bad behaviour that doesnt appear in PaperMC
 	public static boolean isPaperMC = false;
+	
+	private static boolean allowedBp = true;
 
 	public MobController(MobPlugin plugin, FileConfiguration config)
 	{
@@ -75,6 +78,8 @@ public class MobController implements Listener
 		maxDistance = config.getDouble("maximumDistance");
 		Bukkit.getLogger().info("Maximum holding distance: " + maxDistance);
 		Bukkit.getLogger().info("Enabled default crafting recipe: " + config.getBoolean("craftable"));
+		allowedBp = config.getBoolean("allow-backpack");
+		Bukkit.getLogger().info("Enabled backpack: " + config.getBoolean("allow-backpack"));
 
 		MobPlugin.getMobPlugin().getServer().getPluginManager().registerEvents(this, plugin);
 		//https://www.spigotmc.org/threads/test-if-server-is-spigot-or-craftbukkit.96925/
@@ -263,6 +268,10 @@ public class MobController implements Listener
 			double distance = target.getLocation().toVector().subtract(user.getLocation().toVector()).length();
 			if(distance < minDistance)
 				distance = minDistance;
+			
+			//disable backpacking if not allowed in config
+			if(!isAllowedBp())
+				offHandUsed = false;
 
 			if(!isPaperMC)
 			{
@@ -300,7 +309,7 @@ public class MobController implements Listener
 		if(ctrlMob.isBackpack())
 		{
 			ctrlMob.setNotBackpack();
-			user.sendMessage("set not backpack");
+			//user.sendMessage("set not backpack");
 		}
 
 		ctrlMob.unMountMob();
@@ -402,9 +411,28 @@ public class MobController implements Listener
 		Location loc = grabber.getLocation().clone();
 		Vector backwards = grabber.getLocation().getDirection().clone();
 		backwards.setY(0).normalize();
-		backwards.multiply(-grabbed.getWidth() + 0.3);
+		//0.3
+		if(grabbed instanceof Ageable)
+		{
+			Ageable ageable = (Ageable) grabbed;
+			if(!ageable.isAdult())
+			{
+				backwards.multiply(-grabbed.getWidth());
+				loc.setY(loc.getY() + 0.75d);
+			}
+			else
+			{
+				backwards.multiply(-grabbed.getWidth() + 0.3);
+				loc.setY(loc.getY() + 0.7d);
+			}
+		}
+		else
+		{
+			backwards.multiply(-grabbed.getWidth() + 0.3);
+			loc.setY(loc.getY() + 0.7d);
+		}
 
-		loc.setY(loc.getY() + 0.7d);
+		//loc.setY(loc.getY() + 0.7d);
 
 		loc.add(backwards);
 		loc.setDirection(grabber.getLocation().getDirection());
@@ -620,6 +648,11 @@ public class MobController implements Listener
 	//	{
 	//		return _controllerMap;
 	//	}
+
+	public static boolean isAllowedBp()
+	{
+		return allowedBp;
+	}
 
 	public static void clearControllerMap()
 	{
