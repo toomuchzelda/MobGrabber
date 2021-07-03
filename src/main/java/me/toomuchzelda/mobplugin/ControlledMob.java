@@ -281,13 +281,14 @@ public class ControlledMob implements Listener
 	public void setNotBackpack()
 	{
 		this.isBackpack = false;
+		this.sendNormalTeamPacket();
 	}
 
 	//tell the grabber not to collide with other entities
 	//either send a packet 'modifying' their current team
-	//or 'creating' a new team to do this
+	//or 'joining' a dedicated team to do this
 	//only do on packet level to not mess with players/other plugins' actual teams
-	public void sendDontCollidePacket()
+	private void sendDontCollidePacket()
 	{
 		Team team = _grabber.getScoreboard().getEntryTeam(_grabber.getName());
 		
@@ -306,7 +307,7 @@ public class ControlledMob implements Listener
 			//update scoreboard mode
 			newTeamPacket.getIntegers().write(0, 2);
 			
-			//player collection. may not be needed in update team mode
+			//player collection. not needed in update team mode
 			/*Collection<String> players = new ArrayList<String>();
 			players.add(_grabber.getName());
 			players.add(_mount.getUniqueId().toString());*/
@@ -432,8 +433,25 @@ public class ControlledMob implements Listener
 				_grabber.sendMessage(ChatColor.GRAY + "Could not create new fake team packet");
 				return;
 			}
-			
-			
+		}
+	}
+	
+	//reset the collision/teams on the client to whatever it was before
+	//backpacking
+	private void sendNormalTeamPacket()
+	{
+		Team team = _grabber.getScoreboard().getEntryTeam(_grabber.getName());
+		
+		//make a 'change' so the server will update the client which will also
+		//reset their collision state
+		if(team != null)
+		{
+			team.setSuffix(team.getSuffix());
+		}
+		else
+		{
+			bpTeam.addEntry(_grabber.getName());
+			bpTeam.removeEntry(_grabber.getName());
 		}
 	}
 	
