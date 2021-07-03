@@ -29,6 +29,9 @@ public final class MobPlugin extends JavaPlugin
 		saveConfig();
 		
 		_mobController = new MobController(this, config);
+		
+		ControlledMob.setupTeam();
+		
 		_mobController.startTicker();
 	}
 	

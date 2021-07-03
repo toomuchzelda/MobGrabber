@@ -18,13 +18,17 @@ import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDamageEvent.DamageCause;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerSwapHandItemsEvent;
+import org.bukkit.scoreboard.Scoreboard;
 import org.bukkit.scoreboard.Team;
+import org.bukkit.scoreboard.Team.Option;
+import org.bukkit.scoreboard.Team.OptionStatus;
 import org.bukkit.util.Vector;
 
 import com.comphenix.protocol.PacketType;
 import com.comphenix.protocol.ProtocolLibrary;
 import com.comphenix.protocol.events.PacketContainer;
 
+import net.md_5.bungee.api.ChatColor;
 import net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket;
 import net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket.Parameters;
 import net.minecraft.world.scores.PlayerTeam;
@@ -59,6 +63,10 @@ public class ControlledMob implements Listener
 	//hack to avoid throwing the mob when just dropping the item.
 	public boolean tossed = false;
 	
+	//for putting player who's not in team into fake team with packets
+	//for disabling collision only for them
+	private static Team bpTeam;
+	private static PlayerTeam nmsBpTeam;
 
 	/**
 	 * @param controlled The LivingEntity to be grabbed
@@ -84,6 +92,47 @@ public class ControlledMob implements Listener
 		MobPlugin.getMobPlugin().getServer().getPluginManager().registerEvents(this, MobPlugin.getMobPlugin());
 	}
 
+	public static void setupTeam()
+	{
+		Scoreboard sb = Bukkit.getScoreboardManager().getMainScoreboard();
+		Team team = sb.getTeam("bpTeam");
+		
+		//ensure clean on every reload
+		if(team != null)
+		{
+			team.unregister();
+			Bukkit.getLogger().info("Unregistered old bpTeam");
+		}
+		team = sb.registerNewTeam("bpTeam");
+		team.setOption(Option.COLLISION_RULE, OptionStatus.NEVER);
+		team.setCanSeeFriendlyInvisibles(false);
+		//team.setColor(org.bukkit.ChatColor.LIGHT_PURPLE);
+		
+		bpTeam = team;
+		Bukkit.getLogger().info("Created bukkit bp team");
+		
+		nmsBpTeam = getNMSTeam(bpTeam);
+	}
+	
+	private static PlayerTeam getNMSTeam(Team bukkitTeam)
+	{
+		PlayerTeam nmsTeam = null;
+		try
+		{
+			Field teamField = Class.forName("org.bukkit.craftbukkit.v1_17_R1.scoreboard.CraftTeam").getDeclaredField("team");
+	        teamField.setAccessible(true);
+	        nmsTeam = (PlayerTeam) teamField.get(bukkitTeam);
+		}
+		catch(Exception e)
+		{
+			e.printStackTrace();
+			Bukkit.getLogger().warning("Couldn't set up fake NMS team");
+		}
+		
+		Bukkit.getLogger().info("Created nms bp team");
+		
+		return nmsTeam;
+	}
 
 	/**
 	 * If the controlled mob is a Player, put them on their Pig.
@@ -213,7 +262,8 @@ public class ControlledMob implements Listener
 	//apply the velocity, used when releasing
 	public void applyVelocity()
 	{
-		_controlled.setVelocity(velocity);
+		if(velocity != null)
+			_controlled.setVelocity(velocity);
 	}
 	
 	public boolean isBackpack()
@@ -225,6 +275,7 @@ public class ControlledMob implements Listener
 	public void setBackpack()
 	{
 		this.isBackpack = true;
+		this.sendDontCollidePacket();
 	}
 	
 	public void setNotBackpack()
@@ -236,8 +287,7 @@ public class ControlledMob implements Listener
 	//either send a packet 'modifying' their current team
 	//or 'creating' a new team to do this
 	//only do on packet level to not mess with players/other plugins' actual teams
-	@EventHandler
-	public void sendDontCollidePacket(PlayerInteractEvent event)
+	public void sendDontCollidePacket()
 	{
 		Team team = _grabber.getScoreboard().getEntryTeam(_grabber.getName());
 		
@@ -247,7 +297,7 @@ public class ControlledMob implements Listener
 			PacketContainer newTeamPacket = new PacketContainer(PacketType.Play.Server.SCOREBOARD_TEAM);
 			
 			//team name
-			String name = _grabber.getScoreboard().getEntryTeam(_grabber.getName()).getName();
+			String name = team.getName();
 			
 			//_grabber.sendMessage("team name=" + name);
 			
@@ -256,17 +306,19 @@ public class ControlledMob implements Listener
 			//update scoreboard mode
 			newTeamPacket.getIntegers().write(0, 2);
 			
-			//player collection. perhaps only players in team?
-			Collection<String> players = new ArrayList<String>();
+			//player collection. may not be needed in update team mode
+			/*Collection<String> players = new ArrayList<String>();
 			players.add(_grabber.getName());
-			players.add(_mount.getUniqueId().toString());
+			players.add(_mount.getUniqueId().toString());*/
 			//_grabber.sendMessage("UUID To string: " + _mount.getUniqueId().toString());
 			
-			String ctrld = _controlled instanceof Player ? _controlled.getName() : 
-				_controlled.getUniqueId().toString();
-			players.add(ctrld);
+			//may not be necessary, they won't get pushed while on
+			//	mount
+			//String ctrld = _controlled instanceof Player ? _controlled.getName() : 
+			//	_controlled.getUniqueId().toString();
+			//players.add(ctrld);
 			
-			newTeamPacket.getModifier().write(2, players);
+			//newTeamPacket.getModifier().write(2, players);
 			
 			PlayerTeam nmsTeam = null;
 			
@@ -335,13 +387,53 @@ public class ControlledMob implements Listener
 			catch(Exception e)
 			{
 				e.printStackTrace();
-				Bukkit.broadcastMessage(e.getMessage());
+				_grabber.sendMessage(ChatColor.GRAY + "Failed to create collision off for existing team packet");
 				return;
 			}
 		}
 		else
 		{
 			//make new team packet with collision off and send it to them
+			PacketContainer newTeamPacket = new PacketContainer(PacketType.Play.Server.SCOREBOARD_TEAM);
+			String name = bpTeam.getName();
+			
+			newTeamPacket.getStrings().write(0, name);
+			
+			//add to team mode
+			newTeamPacket.getIntegers().write(0, 3);
+			
+			//player collection
+			Collection<String> players = new ArrayList<String>();
+			players.add(_grabber.getName());
+			players.add(_mount.getUniqueId().toString());
+			
+			newTeamPacket.getModifier().write(2, players);
+			
+			try
+			{
+				//create packet params with existing nmsBp team
+				//ClientboundSetPlayerTeamPacket.Parameters packetParams = new ClientboundSetPlayerTeamPacket.Parameters(nmsBpTeam);
+				
+				//dont need to modify the collision rule since its already set in nmsBpTeam
+				
+				//Optional<Parameters> optional = Optional.of(packetParams);
+				
+				//packet JOIN mode doesnt need options
+				Optional<Parameters> noOption = Optional.empty();
+				
+				newTeamPacket.getModifier().write(3, noOption);
+				
+				ProtocolLibrary.getProtocolManager().sendServerPacket(_grabber, newTeamPacket);
+				_grabber.sendMessage("sent no team packet");
+			}
+			catch(Exception e)
+			{
+				e.printStackTrace();
+				_grabber.sendMessage(ChatColor.GRAY + "Could not create new fake team packet");
+				return;
+			}
+			
+			
 		}
 	}
 	
