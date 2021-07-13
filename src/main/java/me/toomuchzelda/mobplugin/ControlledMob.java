@@ -47,7 +47,7 @@ public class ControlledMob implements Listener
 	private boolean isBackpack;
 
 	//band aid to avoid throwing the mob when just dropping the item.
-	public boolean tossed = false;
+	//public boolean tossed = false;
 
 	/**
 	 * @param controlled The LivingEntity to be grabbed
@@ -220,10 +220,19 @@ public class ControlledMob implements Listener
 	}
 
 	//apply the velocity, used when releasing
-	public void applyVelocity()
+	public void applyVelocity(boolean carrying)
 	{
 		if(velocity != null)
+		{
+			if(carrying)
+			{
+				velocity.normalize();
+				velocity.multiply(holdingDistance / 3.5);
+				//_grabber.sendMessage("applyvel backpack true");
+			}
+				
 			_controlled.setVelocity(velocity);
+		}
 	}
 
 	public boolean isBackpack()

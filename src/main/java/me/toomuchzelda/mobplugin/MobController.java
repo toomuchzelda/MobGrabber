@@ -238,7 +238,7 @@ public class MobController implements Listener
 		}
 	}
 
-	@EventHandler
+	/*@EventHandler
 	public void onLeftClick(PlayerInteractEvent event)
 	{
 		if(event.getAction() == Action.LEFT_CLICK_AIR || event.getAction() == Action.LEFT_CLICK_BLOCK)
@@ -272,6 +272,7 @@ public class MobController implements Listener
 			}
 		}
 	}
+	*/
 
 	public static void setControlling(Player user, LivingEntity target, boolean offHandUsed)
 	{
@@ -320,17 +321,18 @@ public class MobController implements Listener
 	{
 		ControlledMob ctrlMob = _controllerMap.get(user);
 		//LivingEntity controlled = ctrlMob.getMob();
-
+		boolean wasBp = false;
 		if(ctrlMob.isBackpack())
 		{
 			ctrlMob.setNotBackpack();
+			wasBp = true;
 			//user.sendMessage("set not backpack");
 		}
 		
 		//unmounting a mob calls a VehicleExitEvent, maybe i dont need setNotControlling
 		ctrlMob.unMountMob();
 		ctrlMob.removeMount();
-		ctrlMob.applyVelocity();
+		ctrlMob.applyVelocity(wasBp);
 		ctrlMob.getGrabber().sendMessage(ChatColor.DARK_GRAY + "Dropped " + ctrlMob.getMob().getName());
 	}
 
@@ -600,7 +602,7 @@ public class MobController implements Listener
 				
 				//hack to stop the left-click PlayerInteractEvent from firing
 				//and throwing the grabbed mob
-				mob.tossed = true;
+				//mob.tossed = true;
 			}
 		}
 	}
