@@ -26,6 +26,7 @@ public final class MobPlugin extends JavaPlugin
 		config.addDefault("minimumDistance", 1.2d);
 		config.addDefault("maximumDistance", 30);
 		config.addDefault("craftable", true);
+		config.addDefault("give-command-ops-only", false);
 		config.addDefault("allow-backpack", true);
 
 		config.options().copyDefaults(true);
@@ -55,15 +56,30 @@ public final class MobPlugin extends JavaPlugin
 			{
 				if(args[0].equals("give"))
 				{
-					if(sender.hasPermission("mobgrabber.give") && sender instanceof Player)
+					if(sender.hasPermission("mobgrabber.give"))
 					{
-						Player p = (Player) sender;
-						p.getInventory().addItem(MobController._controllerItem);
-						sender.sendMessage("§9Given mob grabber");
+						if(sender instanceof Player)
+						{
+							Player p = (Player) sender;
+							if((config.getBoolean("give-command-ops-only") && p.isOp() ||
+									!config.getBoolean("give-command-ops-only")))
+							{
+								p.getInventory().addItem(MobController._controllerItem);
+								sender.sendMessage(ChatColor.BLUE + "Given mob grabber");
+							}
+							else
+							{
+								p.sendMessage(ChatColor.RED + "Only operators can use this command");
+							}
+						}
+						else
+						{
+							sender.sendMessage(ChatColor.RED + "Can't receive the item if you're not a player!");
+						}
 					}
 					else
 					{
-						sender.sendMessage(ChatColor.RED + "You don't have permission or are not a player!");
+						sender.sendMessage(ChatColor.RED + "You don't have permission");
 					}
 				}
 				else if(args[0].equals("debug"))
@@ -83,7 +99,8 @@ public final class MobPlugin extends JavaPlugin
 							+ "The further you hold them when left clicking the further they'll fly\n"
 							+ "Carry a mob on your head by holding the Grabber item in your offhand\n"
 							+ "To annoy someone, grab them and put them into lava\n"
-							+ "The crafting recipe, holding distances and allowing riding can be changed in MobPlugin"
+							+ "The crafting recipe, holding distances, allowing riding, and who can use"
+							+ " the /mbc give command can be changed in MobPlugin"
 							+ "/config.yml");
 					sender.sendMessage("/mbc help - view this page");
 					sender.sendMessage("Plugin created by toomuchzelda");

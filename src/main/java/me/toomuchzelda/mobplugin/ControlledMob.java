@@ -1,6 +1,5 @@
 package me.toomuchzelda.mobplugin;
 
-import java.util.ArrayList;
 import java.util.Collection;
 
 import org.bukkit.Location;
