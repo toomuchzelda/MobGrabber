@@ -7,3 +7,16 @@ commands:
   description: MobGrabber stuff
   aliases: mbc
   usage: /<command> [debug]
+
+permissions:
+    mobgrabber.*:
+        description: Gives access to all mobgrabber
+        children:
+            mobgrabber.debug: true
+            mobgrabber.give: true
+    mobgrabber.give:
+        description: Use /mbc give
+        default: true
+    mobgrabber.debug:
+        description: Use /mbc debug
+        default: true

@@ -18,7 +18,6 @@ import org.bukkit.Particle.DustOptions;
 import org.bukkit.World;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.craftbukkit.v1_17_R1.entity.CraftPig;
-import org.bukkit.entity.Ageable;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
@@ -150,27 +149,34 @@ public class MobController implements Listener
 
 							@Override
 							public boolean test(Entity e) {
-								boolean bool = false;
-								if(e.getEntityId() != p.getEntityId())
+								if(e.getEntityId() == p.getEntityId())
+									return false;
+								
+								if(e.getCustomName() != null &&
+										e.getCustomName().equals("MobGrabberPig" + e.getEntityId()))
+									return false;
+								
+								if(e instanceof Player)
 								{
-									bool = true;
-									if(e instanceof Player)
-									{
-										Player rayPlayer = (Player) e;
-										if(rayPlayer.getGameMode().equals(GameMode.SPECTATOR))
-										{
-											bool = false;
-										}
-									}
+									Player rayPlayer = (Player) e;
+									if(rayPlayer.getGameMode().equals(GameMode.SPECTATOR))
+										return false;
 								}
-								return bool;
+								
+								return true;
 							}
 						};
 
 						RayTraceResult result = world.rayTrace(p.getEyeLocation(), p.getLocation().getDirection()
-								, maxDistance, FluidCollisionMode.NEVER, true, 0, notUserOrSpectator);
+								, maxDistance, FluidCollisionMode.NEVER, true, 0.3, notUserOrSpectator);
 
-						drawParticleLine(p.getEyeLocation(), p.getLocation().getDirection(), maxDistance);
+						double particleDist;
+						if(result != null)
+							particleDist = p.getEyeLocation().subtract(result.getHitPosition()).length();
+						else
+							particleDist = maxDistance;
+						
+						drawParticleLine(p.getEyeLocation(), p.getLocation().getDirection(), particleDist);
 
 						//if the raytrace hit an entity
 						if(result != null && result.getHitBlock() == null && result.getHitEntity() != null)
@@ -210,6 +216,7 @@ public class MobController implements Listener
 					}
 					else
 					{
+						/*
 						ControlledMob mob = _controllerMap.get(event.getPlayer());
 						String grabbedName = mob.getMob().getName();
 						event.getPlayer().sendMessage("§8Dropped " + grabbedName);
@@ -220,6 +227,8 @@ public class MobController implements Listener
 						mob.applyVelocity();
 
 						_controllerMap.remove(event.getPlayer());
+						*/
+						setNotControlling(event.getPlayer());
 					}
 				}
 			}
@@ -231,9 +240,12 @@ public class MobController implements Listener
 	{
 		if(event.getAction() == Action.LEFT_CLICK_AIR || event.getAction() == Action.LEFT_CLICK_BLOCK)
 		{
+			
 			if(event.getItem() != null && event.getItem().equals(_controllerItem) 
 					&& _controllerMap.get(event.getPlayer()) != null)
 			{
+				event.setCancelled(true);
+				
 				ControlledMob mob = _controllerMap.get(event.getPlayer());
 				
 				if(!mob.tossed)
@@ -275,10 +287,10 @@ public class MobController implements Listener
 
 			if(!isPaperMC)
 			{
-				if(!offHandUsed)
+				//if(!offHandUsed)
 					target.teleport(calculateHeldLoc(user, target, distance));
-				else
-					target.teleport(calculateBackLoc(user, target));
+				//else
+				//	target.teleport(calculateBackLoc(user, target));
 			}
 
 			int slot = user.getInventory().getHeldItemSlot();
@@ -286,7 +298,7 @@ public class MobController implements Listener
 			ctrlMob = new ControlledMob(user, target, distance, slot);
 
 			ctrlMob.mountPlayer();
-
+			
 			_controllerMap.put(user, ctrlMob);
 
 			if(offHandUsed)
@@ -311,9 +323,12 @@ public class MobController implements Listener
 			ctrlMob.setNotBackpack();
 			//user.sendMessage("set not backpack");
 		}
-
+		
+		//unmounting a mob calls a VehicleExitEvent, maybe i dont need setNotControlling
 		ctrlMob.unMountMob();
 		ctrlMob.removeMount();
+		ctrlMob.applyVelocity();
+		ctrlMob.getGrabber().sendMessage(ChatColor.DARK_GRAY + "Dropped " + ctrlMob.getMob().getName());
 	}
 
 	public void startTicker()
@@ -341,10 +356,9 @@ public class MobController implements Listener
 	{
 		Location heldLocation;
 
-		if(grabbed.isBackpack())
-			heldLocation = calculateBackLoc(grabber, grabbed.getMob());
-		else
-			heldLocation = calculateHeldLoc(grabber, grabbed.getMob(), grabbed.getDistance());
+		heldLocation = calculateHeldLoc(grabber, grabbed.getMob(), grabbed.getDistance());
+			//heldLocation = calculateBackLoc(grabber, grabbed.getMob());
+			
 
 
 		//EntityPig nmsPig = ((CraftPig) grabbed.getMount()).getHandle();
@@ -358,8 +372,8 @@ public class MobController implements Listener
 		//https://www.spigotmc.org/threads/get-nms-class-from-bukkit-class.285298/
 		//https://www.sSilverfishotmc.org/threads/helping-to-teleport-a-packet-entity-with-passenger.358136/
 		//use NMS mob because teleporting a bukkit entity with passengers doesnt work
-		float pitch = (float) heldLocation.getPitch();
-		float yaw = (float) heldLocation.getYaw();
+		float pitch = heldLocation.getPitch();
+		float yaw = heldLocation.getYaw();
 
 		Pig nmsPig = ((CraftPig) grabbed.getMount()).getHandle();
 		nmsPig.moveTo(heldLocation.getX(), heldLocation.getY(), heldLocation.getZ(), yaw, pitch);
@@ -406,40 +420,86 @@ public class MobController implements Listener
 		return heldLoc;
 	}
 
+	/*
 	public static Location calculateBackLoc(Player grabber, LivingEntity grabbed)
 	{
 		Location loc = grabber.getLocation().clone();
 		Vector backwards = grabber.getLocation().getDirection().clone();
 		backwards.setY(0).normalize();
 		//0.3
-		if(grabbed instanceof Ageable)
+		//instance parteertern matching????????????????????
+		if(grabbed instanceof Ageable ageable && !ageable.isAdult())
 		{
-			Ageable ageable = (Ageable) grabbed;
-			if(!ageable.isAdult())
-			{
-				backwards.multiply(-grabbed.getWidth());
-				loc.setY(loc.getY() + 0.75d);
-			}
-			else
-			{
-				backwards.multiply(-grabbed.getWidth() + 0.3);
-				loc.setY(loc.getY() + 0.7d);
-			}
+			backwards.multiply(-grabbed.getWidth());
+			loc.setY(loc.getY() + 0.75d);
 		}
 		else
 		{
-			backwards.multiply(-grabbed.getWidth() + 0.3);
+			backwards.multiply(-grabbed.getWidth() + 0.29);
 			loc.setY(loc.getY() + 0.7d);
 		}
-
+		
+		
+		
+		//backwards.multiply(-grabbed.getWidth() + 0.29);
 		//loc.setY(loc.getY() + 0.7d);
-
+		
+		
 		loc.add(backwards);
+		
+		
+		//after calculating where they'll be held, if it'll block
+		//the grabber's view them move them back a little
+
+		Location grabEyeLoc = grabber.getEyeLocation();
+
+		//width from centre of mob (radius but not circle)
+		double width = grabbed.getWidth() / 2;
+		Location corner1 = loc.clone().add(width, grabbed.getHeight(), width);
+		Location corner2 = loc.clone().subtract(width, 0, width);
+
+		if(grabEyeLoc.getX() < corner1.getX() && grabEyeLoc.getX() > corner2.getX())
+		{
+			//Y check not needed, grabbed only moves on X and Z
+			//if(grabEyeLoc.getY() < corner1.getY() && grabEyeLoc.getY() > corner2.getY())
+			//{
+			if(grabEyeLoc.getZ() < corner1.getZ() && grabEyeLoc.getZ() > corner2.getZ())
+			{
+				//grabber.sendMessage("inside you");
+				//find the corner closest to grabber eye and teleport grabbed out of grabber eye loc
+
+				//compare the X of the corners
+				double xDist1 = Math.abs(grabEyeLoc.toVector().subtract(corner1.toVector()).getX());
+				double xDist2 = Math.abs(grabEyeLoc.toVector().subtract(corner2.toVector()).getX());
+				double xDist;
+				if(xDist1 < xDist2)
+					xDist = grabEyeLoc.toVector().subtract(corner1.toVector()).getX();
+				else
+					xDist = grabEyeLoc.toVector().subtract(corner2.toVector()).getX();
+
+				double zDist1 = Math.abs(grabEyeLoc.toVector().subtract(corner1.toVector()).getZ());
+				double zDist2 = Math.abs(grabEyeLoc.toVector().subtract(corner2.toVector()).getZ());
+				double zDist;
+				if(zDist1 < zDist2)
+					zDist = grabEyeLoc.toVector().subtract(corner1.toVector()).getZ();
+				else
+					zDist = grabEyeLoc.toVector().subtract(corner2.toVector()).getZ();
+
+				grabber.sendMessage("x=" + xDist + ",z=" + zDist);
+				grabber.sendMessage("yaw=" + grabber.getLocation().getYaw());
+				
+				
+				
+			}
+			//}
+		}
+
 		loc.setDirection(grabber.getLocation().getDirection());
 
 		return loc;
 	}
-
+	*/
+	
 	public static boolean isControlled(LivingEntity controlled)
 	{
 		Iterator<Entry<Player, ControlledMob>> itel = _controllerMap.entrySet().iterator();
@@ -503,8 +563,7 @@ public class MobController implements Listener
 			if(entry.getValue().getMob() == grabbed)
 			{
 				//removeControlledEffects(entry.getKey());
-				entry.getValue().unMountMob();
-				entry.getValue().removeMount();
+				removeControlledEffects(entry.getKey());
 				found = true;
 			}
 		}
@@ -578,8 +637,8 @@ public class MobController implements Listener
 			stepLoc.add(step);
 
 			//hit a wall or sth
-			if(stepLoc.getBlock().getBlockData().getMaterial() != Material.AIR)
-				return;
+			//if(stepLoc.getBlock().getBlockData().getMaterial() != Material.AIR)
+			//	return;
 
 			start.getWorld().spawnParticle(Particle.SPELL_INSTANT, stepLoc, 1);
 		}
@@ -678,7 +737,6 @@ public class MobController implements Listener
 
 		LivingEntity livent = event.getExited();
 
-		//f(!livent.getLocation().getBlock().getBlockData().getMaterial().equals(Material.WATER))
 		if(!livent.isInWater())
 		{
 			//Bukkit.broadcastMessage("dsimounted not in water");
@@ -746,18 +804,20 @@ public class MobController implements Listener
 			_controllerMap.remove(event.getPlayer());
 		}
 
+		freeIfControlled(event.getPlayer());
+		
 		//grabbing player may also be grabbed
 		//problem if they're in water, since vehicleExit does something
 		//so just check for water
-		if(event.getPlayer().isInWater())
-		{
-			freeIfControlled(event.getPlayer());
-		}
-		else
-		{
-			//only removes if controlled
-			removeEffectsByGrabbed(event.getPlayer());
-		}
+//		if(event.getPlayer().isInWater())
+//		{
+//			freeIfControlled(event.getPlayer());
+//		}
+//		else
+//		{
+//			//only removes if controlled
+//			removeEffectsByGrabbed(event.getPlayer());
+//		}
 	}
 
 
