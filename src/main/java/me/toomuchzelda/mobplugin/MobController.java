@@ -15,6 +15,7 @@ import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Particle;
 import org.bukkit.Particle.DustOptions;
+import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.craftbukkit.v1_17_R1.entity.CraftPig;
@@ -202,6 +203,7 @@ public class MobController implements Listener
 								{
 									//false if main hand, true if offhand
 									setControlling(p, livent, !(event.getHand() == EquipmentSlot.HAND));
+									p.playSound(p.getLocation(), Sound.ENTITY_LEASH_KNOT_PLACE, 100, 0);
 									p.sendMessage(ChatColor.DARK_GRAY + "Grabbed " + livent.getName());
 
 									//p.sendMessage(_controllerMap.toString());
@@ -228,6 +230,7 @@ public class MobController implements Listener
 
 						_controllerMap.remove(event.getPlayer());
 						*/
+						event.getPlayer().playSound(event.getPlayer().getLocation(), Sound.ENTITY_LEASH_KNOT_BREAK, 999, 0);
 						setNotControlling(event.getPlayer());
 					}
 				}
