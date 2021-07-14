@@ -219,9 +219,6 @@ public class MobController implements Listener
 					else
 					{
 						/*
-						ControlledMob mob = _controllerMap.get(event.getPlayer());
-						String grabbedName = mob.getMob().getName();
-						event.getPlayer().sendMessage("§8Dropped " + grabbedName);
 						//setNotControlling(event.getPlayer());
 
 						removeControlledEffects(event.getPlayer());
@@ -230,6 +227,9 @@ public class MobController implements Listener
 
 						_controllerMap.remove(event.getPlayer());
 						*/
+						ControlledMob mob = _controllerMap.get(event.getPlayer());
+						String grabbedName = mob.getMob().getName();
+						event.getPlayer().sendMessage("§8Dropped " + grabbedName);
 						event.getPlayer().playSound(event.getPlayer().getLocation(), Sound.ENTITY_LEASH_KNOT_BREAK, 999, 0);
 						setNotControlling(event.getPlayer());
 					}
@@ -333,7 +333,6 @@ public class MobController implements Listener
 		ctrlMob.unMountMob();
 		ctrlMob.removeMount();
 		ctrlMob.applyVelocity(wasBp);
-		ctrlMob.getGrabber().sendMessage(ChatColor.DARK_GRAY + "Dropped " + ctrlMob.getMob().getName());
 	}
 
 	public void startTicker()
