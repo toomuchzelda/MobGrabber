@@ -3,11 +3,12 @@ package me.toomuchzelda.mobplugin;
 import java.util.Collection;
 
 import org.bukkit.Location;
+import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
+import org.bukkit.Particle;
 import org.bukkit.block.Block;
-import org.bukkit.entity.EntityType;
-import org.bukkit.entity.LivingEntity;
-import org.bukkit.entity.Pig;
-import org.bukkit.entity.Player;
+import org.bukkit.craftbukkit.v1_17_R1.entity.CraftAreaEffectCloud;
+import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
@@ -15,6 +16,8 @@ import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.EntityDamageEvent.DamageCause;
 import org.bukkit.event.player.PlayerSwapHandItemsEvent;
+import org.bukkit.metadata.FixedMetadataValue;
+import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.util.BoundingBox;
 import org.bukkit.util.Vector;
 
@@ -29,26 +32,29 @@ public class ControlledMob implements Listener
 	private Player _grabber;
 	private LivingEntity _controlled;
 	private Pig _mount;
-
+	private AreaEffectCloud _cloud;
+	//private AreaEffectCloud _cloud;
+	
 	//just record to apply to mounted mob when releasing
 	//(throwing the mob kind of effect)
 	private Vector velocity;
-
+	
 	//distance to hold the mob from the player
 	private double holdingDistance;
-
+	
 	//last held item slot for distance scrolling
 	private int lastSlot;
-
+	
 	//rubbish to avoid ConcurrentModificationExceptions across multiple different events that remove
 	//from the hashmap
 	private boolean removed = false;
-
+	
 	private boolean isBackpack;
-
-	//band aid to avoid throwing the mob when just dropping the item.
-	//public boolean tossed = false;
-
+	
+	//for identifying Pigs made by this plugin
+	//public static String metaName = "isMobGrabberPig";
+	public static NamespacedKey metaKey = new NamespacedKey(MobPlugin.getMobPlugin(), "mob_grabber_pig");
+	
 	/**
 	 * @param controlled The LivingEntity to be grabbed
 	 */
@@ -56,7 +62,7 @@ public class ControlledMob implements Listener
 	{
 		_controlled = controlled;
 		_grabber = grabber;
-
+		
 		_mount = (Pig) _controlled.getWorld().spawnEntity(_controlled.getLocation(), EntityType.PIG);
 		_mount.setInvisible(true);
 		_mount.setBaby();
@@ -65,16 +71,50 @@ public class ControlledMob implements Listener
 		_mount.setAI(false);
 		_mount.setSilent(true);
 		_mount.setCollidable(false);
-		_mount.setCustomName("MobGrabberPig" + _mount.getEntityId());
+		//_mount.setCustomName(metaName + _mount.getEntityId());
 		_mount.setCustomNameVisible(false);
-
+		_mount.getPersistentDataContainer().set(metaKey, PersistentDataType.INTEGER, 1);
+		//_mount.setMetadata(metaName, new FixedMetadataValue(MobPlugin.getMobPlugin(), true));
+		
+		/*
+		_mount = (ArmorStand) _controlled.getWorld().spawnEntity(_controlled.getLocation(), EntityType.ARMOR_STAND);
+		_mount.setInvisible(true);
+		_mount.setSmall(true);
+		_mount.setGravity(false);
+		_mount.setAI(false);
+		_mount.setSilent(true);
+		_mount.setCollidable(false);
+		_mount.setCustomName("MobGrabberStand" + _mount.getEntityId());
+		_mount.setCustomNameVisible(false);
+		_mount.setMarker(true);
+		*/
+		
+		_cloud = (AreaEffectCloud) _controlled.getWorld().spawnEntity(_grabber.getLocation()/*.subtract(0, 1000, 0)*/, EntityType.AREA_EFFECT_CLOUD);
+		//_cloud.setDuration(Integer.MAX_VALUE - 1);
+		_cloud.setDurationOnUse(0);
+		_cloud.setRadius(0);
+		_cloud.setRadiusOnUse(0);
+		_cloud.setRadiusPerTick(0);
+		_cloud.setGravity(false);
+		_cloud.setSilent(true);
+		_cloud.getPersistentDataContainer().set(metaKey, PersistentDataType.INTEGER, 1);
+		_cloud.setCustomNameVisible(false);
+		_cloud.clearCustomEffects();
+		//no potion particles
+		_cloud.setParticle(Particle.BLOCK_CRACK, Material.AIR.createBlockData());
+		
+		net.minecraft.world.entity.AreaEffectCloud nmsCloud = ((CraftAreaEffectCloud) (_cloud)).getHandle();
+		nmsCloud.setDuration(4);
+		nmsCloud.setWaitTime(4);
+		nmsCloud.tickCount = 1;
+		
 		this.holdingDistance = distance;
 		this.lastSlot = slot;
 		this.isBackpack = false;
-
+		
 		MobPlugin.getMobPlugin().getServer().getPluginManager().registerEvents(this, MobPlugin.getMobPlugin());
 	}
-
+	
 	/**
 	 * If the controlled mob is a Player, put them on their Pig.
 	 * <br>
@@ -91,41 +131,58 @@ public class ControlledMob implements Listener
 		//			throw new IllegalStateException("This ControlledMob is not a Player");
 		//		}
 	}
-
+	
 	public boolean unMountMob()
 	{
 		boolean bool = false;
-		if(_mount.getPassengers().size() > 0 && _mount.getPassengers().get(0).equals(_controlled))
+		if(!isBackpack)
 		{
-			bool = _mount.removePassenger(_controlled);
-			
-			//avoid falling through floors and reset to grabbed facing position (not mount pig)
-			Location toTele = _mount.getLocation().clone();
-			Block block = toTele.getBlock();
-			if(!block.isPassable())
+			if (_mount.getPassengers().contains(_controlled))
 			{
-				Collection<BoundingBox> list = block.getCollisionShape().getBoundingBoxes();
-				double highest = 0;
-				for(BoundingBox box : list)
+				bool = _mount.removePassenger(_controlled);
+				
+				//avoid falling through floors and reset to grabbed facing position (not mount pig)
+				Location toTele = _mount.getLocation();
+				Block block = toTele.getBlock();
+				if (!block.isPassable())
 				{
-					if(box.getMaxY() > highest)
-						highest = box.getMaxY();
+					Collection<BoundingBox> list = block.getCollisionShape().getBoundingBoxes();
+					double highest = 0;
+					for (BoundingBox box : list)
+					{
+						if (box.getMaxY() > highest)
+							highest = box.getMaxY();
+					}
+					toTele.add(0, highest, 0);
 				}
-				toTele.add(0, highest, 0);
+				toTele.setDirection(_controlled.getLocation().getDirection());
+				
+				_controlled.teleport(toTele);
 			}
-			toTele.setDirection(_controlled.getLocation().getDirection());
-
-			_controlled.teleport(toTele);
+		}
+		else
+		{
+			//if (_cloud.getPassengers().size() > 0 && _cloud.getPassengers().get(0).equals(_controlled))
+			if(_cloud.getPassengers().contains(_controlled))
+			{
+				bool = _cloud.removePassenger(_controlled);
+				
+				Location toTele = _cloud.getLocation();
+				toTele.setDirection(_controlled.getLocation().getDirection());
+				_controlled.teleport(toTele);
+			}
 		}
 		return bool;
 	}
-
+	
 	public void removeMount()
 	{
 		if(_mount.isValid())
-		{
 			_mount.remove();
-		}
+		
+		if(_cloud.isValid())
+			_cloud.remove();
+		
 		HandlerList.unregisterAll(this);
 	}
 
@@ -158,8 +215,8 @@ public class ControlledMob implements Listener
 			throw new IllegalStateException("This ControlledMob instance is not a Player.");
 		}
 	}*/
-
-
+	
+	
 	/**
 	 * @return The LivingEntity being grabbed
 	 */
@@ -167,59 +224,65 @@ public class ControlledMob implements Listener
 	{
 		return _controlled;
 	}
-
+	
 	public Pig getMount()
 	{
 		return _mount;
+	}
+	
+	public AreaEffectCloud getCloud()
+	{
+		return _cloud;
 	}
 	
 	public Player getGrabber()
 	{
 		return _grabber;
 	}
-
+	
 	public double getDistance()
 	{
 		return holdingDistance;
 	}
-
+	
 	public void setDistance(double distance)
 	{
 		this.holdingDistance = distance;
 	}
-
+	
 	public int getLastSlot()
 	{
 		return lastSlot;
 	}
-
-
+	
+	
 	public void setLastSlot(int lastSlot)
 	{
 		this.lastSlot = lastSlot;
 	}
-
+	
 	public void setRemoved()
 	{
 		removed = true;
 	}
-
+	
 	public boolean isRemoved()
 	{
 		return removed;
 	}
-
+	
 	public Vector getVelocity()
 	{
 		return velocity;
 	}
-
+	
 	public void setVelocity(Vector velocity)
 	{
 		this.velocity = velocity;
 	}
-
+	
 	//apply the velocity, used when releasing
+	// reduce it if carrying on head
 	public void applyVelocity(boolean carrying)
 	{
 		if(velocity != null)
@@ -230,40 +293,56 @@ public class ControlledMob implements Listener
 				velocity.multiply(holdingDistance / 3.5);
 				//_grabber.sendMessage("applyvel backpack true");
 			}
-				
+			
 			_controlled.setVelocity(velocity);
 		}
 	}
-
+	
 	public boolean isBackpack()
 	{
 		return isBackpack;
 	}
-
-
+	
+	
 	public void setBackpack()
 	{
 		this.isBackpack = true;
 		this.putOnHead();
 	}
-
+	
 	public void setNotBackpack()
 	{
 		this.isBackpack = false;
 		this.takeOffHead();
 	}
-
+	
 	//put grabbed onto grabber's head
 	private void putOnHead()
 	{
-		if(_grabber.addPassenger(_mount))
+		//unmount from pig, mount to cloud, mount cloud to grabber
+		if(_mount.removePassenger(_controlled))
 		{
-			
+			if(_cloud.addPassenger(_controlled))
+			{
+				if(_grabber.addPassenger(_cloud))
+				{
+				
+				}
+				else
+				{
+					_grabber.sendMessage(ChatColor.RED + "Couldn't mount cloud to head");
+					this.isBackpack = false;
+				}
+			}
+			else
+			{
+				_grabber.sendMessage(ChatColor.RED + "Couldn't mount to cloud");
+				this.isBackpack = false;
+			}
 		}
 		else
 		{
-			_grabber.sendMessage(ChatColor.RED + "Couldn't put " + _controlled.getName()
-					+ " on head.");
+			_grabber.sendMessage(ChatColor.RED + "Couldn't unmount");
 			this.isBackpack = false;
 		}
 		/*
@@ -294,20 +373,24 @@ public class ControlledMob implements Listener
 		}
 		*/
 	}
-
+	
 	private void takeOffHead()
 	{
-		if(_grabber.getPassengers().contains(_mount))
+		if(_cloud.removePassenger(_controlled))
 		{
-			if(_grabber.removePassenger(_mount))
+			if(_mount.addPassenger(_controlled))
 			{
-				
 			}
 			else
 			{
-				_grabber.sendMessage(ChatColor.RED + "Couldn't take " + _controlled.getName() + " off your"
-						+ "head");
+				_grabber.sendMessage(ChatColor.RED + "Couldn't mount back onto pig");
 			}
+		}
+		else
+		{
+			_grabber.sendMessage(ChatColor.RED + "Couldn't take " + _controlled.getName() + " off your"
+				+ "head");
+			this.isBackpack = true;
 		}
 		/*
 		if(_grabber.getPassengers().size() > 0 && _grabber.getPassengers().contains(_controlled))
@@ -334,36 +417,47 @@ public class ControlledMob implements Listener
 		}
 		*/
 	}
-
+	
 	@Override
 	public String toString()
 	{
 		String s = "(ControlledMob: mob=" + _controlled.getName();
 		s += ",mount=" + _mount.getUniqueId().toString();
+		s += ",mount is valid=" + _mount.isValid();
+		s += ",cloud is valid=" + _cloud.isValid();
 		s += ",grabber=" + _grabber.getName();
 		s += ')';
-
+		
 		return s;
 	}
-
+	
 	//cancel all damage done to the mount pig and suffocation dmg to grabbed mob
 	@EventHandler
 	public void onDamage(EntityDamageEvent event)
 	{
-		if(event.getEntity() == _mount || 
-				(event.getEntity() == _controlled && event.getCause() == DamageCause.SUFFOCATION))
+		if(event.getEntity() == _mount)
 			event.setCancelled(true);
+		else if(event.getEntity() == _controlled && event.getCause() == DamageCause.SUFFOCATION)
+			event.setCancelled(true);
+		//else if(event.getEntity() == _cloud)
+		//	event.setCancelled(true);
 	}
-
+	
 	@EventHandler
 	public void onMountDeath(EntityDeathEvent event)
 	{
 		if(event.getEntity() == _mount)
 		{
-			_grabber.sendMessage(ChatColor.RED + "Mount pig died. Something went wrong!");
+			_grabber.sendMessage(ChatColor.RED + "Mount died. Something went wrong!");
 		}
+		/*
+		if(event.getEntity() == _cloud)
+		{
+			_grabber.sendMessage(ChatColor.RED + "Mount cloud died. Something went wrong!");
+		}
+		*/
 	}
-
+	
 	//turning backpack mode on/off
 	@EventHandler
 	public void onHandSwap(PlayerSwapHandItemsEvent event)
@@ -382,7 +476,7 @@ public class ControlledMob implements Listener
 			}
 		}
 	}
-
+	
 	//* 		Rubbish 		*//
 
 	/*
