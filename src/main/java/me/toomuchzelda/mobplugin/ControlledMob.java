@@ -92,7 +92,7 @@ public class ControlledMob implements Listener
 		_cloud = (AreaEffectCloud) _controlled.getWorld().spawnEntity(_grabber.getLocation()/*.subtract(0, 1000, 0)*/, EntityType.AREA_EFFECT_CLOUD);
 		//_cloud.setDuration(Integer.MAX_VALUE - 1);
 		_cloud.setDurationOnUse(0);
-		_cloud.setRadius(0);
+		_cloud.setRadius(0.1f);
 		_cloud.setRadiusOnUse(0);
 		_cloud.setRadiusPerTick(0);
 		_cloud.setGravity(false);
@@ -172,6 +172,7 @@ public class ControlledMob implements Listener
 				_controlled.teleport(toTele);
 			}
 		}
+		//velocity applied in this.applyVelocity()
 		return bool;
 	}
 	
@@ -313,6 +314,7 @@ public class ControlledMob implements Listener
 	public void setNotBackpack()
 	{
 		this.isBackpack = false;
+		_mount.teleport(MobController.calculateHeldLoc(_grabber, _controlled, holdingDistance));
 		this.takeOffHead();
 	}
 	
@@ -322,6 +324,7 @@ public class ControlledMob implements Listener
 		//unmount from pig, mount to cloud, mount cloud to grabber
 		if(_mount.removePassenger(_controlled))
 		{
+			/*
 			if(_cloud.addPassenger(_controlled))
 			{
 				if(_grabber.addPassenger(_cloud))
@@ -339,10 +342,31 @@ public class ControlledMob implements Listener
 				_grabber.sendMessage(ChatColor.RED + "Couldn't mount to cloud");
 				this.isBackpack = false;
 			}
+			 */
 		}
 		else
 		{
-			_grabber.sendMessage(ChatColor.RED + "Couldn't unmount");
+			_grabber.sendMessage(ChatColor.RED + "Couldn't unmount from mount");
+			this.isBackpack = false;
+		}
+		
+		if(_cloud.addPassenger(_controlled))
+		{
+		
+		}
+		else
+		{
+			_grabber.sendMessage(ChatColor.RED + "Couldn't mount to cloud");
+			this.isBackpack = false;
+		}
+		
+		if(_grabber.addPassenger(_cloud))
+		{
+		
+		}
+		else
+		{
+			_grabber.sendMessage(ChatColor.RED + "Couldn't mount cloud to head");
 			this.isBackpack = false;
 		}
 		/*
@@ -426,6 +450,7 @@ public class ControlledMob implements Listener
 		s += ",mount is valid=" + _mount.isValid();
 		s += ",cloud is valid=" + _cloud.isValid();
 		s += ",grabber=" + _grabber.getName();
+		s += ",isBackpack=" + isBackpack;
 		s += ')';
 		
 		return s;
@@ -439,8 +464,8 @@ public class ControlledMob implements Listener
 			event.setCancelled(true);
 		else if(event.getEntity() == _controlled && event.getCause() == DamageCause.SUFFOCATION)
 			event.setCancelled(true);
-		//else if(event.getEntity() == _cloud)
-		//	event.setCancelled(true);
+		else if(event.getEntity() == _cloud)
+			event.setCancelled(true);
 	}
 	
 	@EventHandler
@@ -450,12 +475,11 @@ public class ControlledMob implements Listener
 		{
 			_grabber.sendMessage(ChatColor.RED + "Mount died. Something went wrong!");
 		}
-		/*
+		
 		if(event.getEntity() == _cloud)
 		{
 			_grabber.sendMessage(ChatColor.RED + "Mount cloud died. Something went wrong!");
 		}
-		*/
 	}
 	
 	//turning backpack mode on/off

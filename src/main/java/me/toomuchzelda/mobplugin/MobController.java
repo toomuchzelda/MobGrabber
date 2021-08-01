@@ -1,7 +1,6 @@
 package me.toomuchzelda.mobplugin;
 
 import net.md_5.bungee.api.ChatColor;
-import net.minecraft.world.entity.AreaEffectCloud;
 import net.minecraft.world.entity.animal.Pig;
 import org.bukkit.*;
 import org.bukkit.Particle.DustOptions;
@@ -18,7 +17,6 @@ import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.ExplosionPrimeEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.*;
-import org.bukkit.event.vehicle.VehicleExitEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.ShapedRecipe;
@@ -331,12 +329,14 @@ public class MobController implements Listener
 			
 			ctrlMob = new ControlledMob(user, target, distance, slot);
 			
-			ctrlMob.mountPlayer();
+			//ctrlMob.mountPlayer();
 			
 			_controllerMap.put(user, ctrlMob);
 			
 			if(offHandUsed)
 				ctrlMob.setBackpack();
+			else
+				ctrlMob.mountPlayer();
 		}
 	}
 	
@@ -346,7 +346,7 @@ public class MobController implements Listener
 		_controllerMap.remove(user);
 	}
 	
-	//Remove effects without removing from HashMap (for use in Iterations)
+	//Remove effects without removing from HashMap
 	public static void removeControlledEffects(Player user)
 	{
 		ControlledMob ctrlMob = _controllerMap.get(user);
@@ -354,7 +354,7 @@ public class MobController implements Listener
 		boolean wasBp = false;
 		if(ctrlMob.isBackpack())
 		{
-			ctrlMob.setNotBackpack();
+			//ctrlMob.setNotBackpack();
 			wasBp = true;
 			//user.sendMessage("set not backpack");
 		}
@@ -366,6 +366,7 @@ public class MobController implements Listener
 	}
 	
 	//move all grabbed mobs on every tick as well as do particles
+	// also prevent memory leaks
 	public void startTicker()
 	{
 		new BukkitRunnable() {
@@ -383,7 +384,7 @@ public class MobController implements Listener
 					net.minecraft.world.entity.AreaEffectCloud nmsCloud = ((CraftAreaEffectCloud) (entry.getValue().getCloud())).getHandle();
 					nmsCloud.tickCount = 1;
 					
-					moveGrabbedMob(entry.getKey(), entry.getValue());
+					movePigMount(entry.getKey(), entry.getValue());
 					if(!entry.getValue().isBackpack())
 					{
 						drawGrabbedParticle(entry.getValue(), Color.YELLOW);
@@ -400,26 +401,47 @@ public class MobController implements Listener
 			}
 			
 		}.runTaskTimer(MobPlugin.getMobPlugin(), 10, 1);
+		
+		new BukkitRunnable()
+		{
+			@Override
+			public void run()
+			{
+				Iterator<Entry<Player, ControlledMob>> iter = _controllerMap.entrySet().iterator();
+				while(iter.hasNext())
+				{
+					Entry<Player, ControlledMob> entry = iter.next();
+					
+					if(!entry.getKey().isOnline())
+					{
+						if(!entry.getValue().isRemoved())
+						{
+							entry.getValue().setRemoved();
+							Bukkit.getLogger().warning("Player " + entry.getKey().getName()
+									+ " leaked in ctrlermap");
+							iter.remove();
+						}
+					}
+				}
+			}
+		}.runTaskTimer(MobPlugin.getMobPlugin(), 10, 6000);
+		
 	}
 	
-	public static void moveGrabbedMob(Player grabber, ControlledMob grabbed)
+	public static void movePigMount(Player grabber, ControlledMob grabbed)
 	{
-		Location heldLocation;
-		
-		heldLocation = calculateHeldLoc(grabber, grabbed.getMob(), grabbed.getDistance());
-		//heldLocation = calculateBackLoc(grabber, grabbed.getMob());
-		
-		
-		
-		//EntityPig nmsPig = ((CraftPig) grabbed.getMount()).getHandle();
-		//nmsPig.setLocation(heldLocation.getX(), heldLocation.getY(), heldLocation.getZ(), heldLocation.getYaw(), heldLocation.getPitch());
+		Location heldLocation = calculateHeldLoc(grabber, grabbed.getMob(), grabbed.getDistance());
 		
 		//get current 'velocity' and record it
 		//just using getVelocity method on mount doesn't work
 		Vector currentVelocity;
 		
 		if(grabbed.isBackpack())
+		{
 			currentVelocity = heldLocation.toVector().subtract(grabbed.getCloud().getLocation().toVector());
+			Vector backwards = grabber.getLocation().getDirection().multiply(-1);
+			heldLocation = grabber.getLocation().add(0, 200, 0).add(backwards);
+		}
 		else
 			currentVelocity = heldLocation.toVector().subtract(grabbed.getMount().getLocation().toVector());
 		
@@ -853,8 +875,8 @@ public class MobController implements Listener
 		{
 			Player p = (Player) event.getEntity();
 			
-			if(!p.isInWater() && p.isSneaking())
-				freeIfControlled(p);
+			if(p.isInWater() && !p.isSneaking())
+				event.setCancelled(true);
 			else if(p.isSneaking())
 			{
 				//Bukkit.broadcastMessage("dismounted sneaking in water");
@@ -866,7 +888,13 @@ public class MobController implements Listener
 			//cancel if they're dismounting coz of entering water,
 			//but not if they're sneaking (voluntarily leaving)
 			//Bukkit.broadcastMessage("cancelled event");
-			event.setCancelled(true);
+		}
+		else
+		{
+			if(event.getEntity().isInWater())
+			{
+				event.setCancelled(true);
+			}
 		}
 	}
 	
