@@ -3,10 +3,10 @@ main: me.toomuchzelda.mobplugin.MobPlugin
 version: 2
 api-version: 1.17
 commands:
- mobcontroller:
+ mobgrabber:
   description: MobGrabber stuff
-  aliases: mbc
-  usage: /<command> [debug]
+  aliases: mbg
+  usage: /<command> help
 
 permissions:
     mobgrabber.*:

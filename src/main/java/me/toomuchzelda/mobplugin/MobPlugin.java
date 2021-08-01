@@ -67,11 +67,11 @@ public final class MobPlugin extends JavaPlugin
 	@Override
 	public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args)
 	{
-		if(cmd.getName().equalsIgnoreCase("mobcontroller"))
+		if(cmd.getName().equalsIgnoreCase("mobgrabber"))
 		{
 			if(args.length == 0)
 			{
-				sender.sendMessage(ChatColor.YELLOW + "Type /mbc help for info on how to use");
+				sender.sendMessage(ChatColor.YELLOW + "Type /mbg help for info on how to use");
 			}
 			else if(args.length > 0)
 			{
@@ -106,7 +106,7 @@ public final class MobPlugin extends JavaPlugin
 				else if(args[0].equals("debug"))
 				{
 					sender.sendMessage(MobController.getMap().toString());
-					sender.sendMessage("Running PaperMC: " + MobController.isPaperMC);
+					//sender.sendMessage("Running PaperMC: " + MobController.isPaperMC);
 				}
 				else if(args[0].equals("consent"))
 				{

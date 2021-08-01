@@ -23,6 +23,7 @@ import org.bukkit.inventory.ShapedRecipe;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.util.BoundingBox;
 import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
 import org.spigotmc.event.entity.EntityDismountEvent;
@@ -52,7 +53,8 @@ public class MobController implements Listener
 	public static double maxDistance = 30;
 	
 	//for some bad behaviour that doesnt appear in PaperMC
-	public static boolean isPaperMC = false;
+	// (the bad behaviour re appeared)
+	//public static boolean isPaperMC = false;
 	
 	private static boolean allowedBp = true;
 	
@@ -81,6 +83,7 @@ public class MobController implements Listener
 		
 		//https://www.spigotmc.org/threads/test-if-server-is-spigot-or-craftbukkit.96925/
 		//https://papermc.io/forums/t/checking-for-server-type-paper-spigot-or-bukkit/981
+		/*
 		try
 		{
 			Class.forName("com.destroystokyo.paper.VersionHistoryManager$VersionData");
@@ -91,6 +94,7 @@ public class MobController implements Listener
 		{
 			Bukkit.getLogger().info("Not running PaperMC");
 		}
+		 */
 		
 		/*
 		ProtocolLibrary.getProtocolManager().addPacketListener(
@@ -172,6 +176,24 @@ public class MobController implements Listener
 			Bukkit.addRecipe(recipe);
 		}
 	}
+	
+	/*
+	@EventHandler
+	public void onEntityInteract(PlayerInteractEntityEvent event)
+	{
+		ItemStack item;
+		if(event.getHand() == EquipmentSlot.HAND)
+			item = event.getPlayer().getInventory().getItemInMainHand();
+		else if(event.getHand() == EquipmentSlot.OFF_HAND)
+			item = event.getPlayer().getInventory().getItemInOffHand();
+		else
+			item = new ItemStack(Material.AIR);
+		
+		if(item.isSimilar(_controllerItem))
+			event.setCancelled(true);
+	}
+	 */
+	
 	
 	@EventHandler
 	public void onRightClick(PlayerInteractEvent event)
@@ -317,13 +339,13 @@ public class MobController implements Listener
 			if(!isAllowedBp())
 				offHandUsed = false;
 			
-			if(!isPaperMC)
-			{
+			//if(!isPaperMC)
+			//{
 				//if(!offHandUsed)
 				target.teleport(calculateHeldLoc(user, target, distance));
 				//else
 				//	target.teleport(calculateBackLoc(user, target));
-			}
+			//}
 			
 			int slot = user.getInventory().getHeldItemSlot();
 			
@@ -440,7 +462,8 @@ public class MobController implements Listener
 		{
 			currentVelocity = heldLocation.toVector().subtract(grabbed.getCloud().getLocation().toVector());
 			Vector backwards = grabber.getLocation().getDirection().multiply(-1);
-			heldLocation = grabber.getLocation().add(0, 200, 0).add(backwards);
+			heldLocation = grabber.getLocation();
+			heldLocation.setY(-1);
 		}
 		else
 			currentVelocity = heldLocation.toVector().subtract(grabbed.getMount().getLocation().toVector());
@@ -471,10 +494,14 @@ public class MobController implements Listener
 		
 		//not be able to drag them inside blocks
 		RayTraceResult rayTrace = grabber.getWorld().rayTraceBlocks(
-				grabber.getEyeLocation(), userDirection, holdingDistance + 0.4, FluidCollisionMode.NEVER, true);
+				grabber.getEyeLocation(), userDirection, holdingDistance + ((grabbed.getWidth() / 2) * Math.sqrt(2)),
+				FluidCollisionMode.NEVER, true);
 		
 		if(rayTrace != null)
 		{
+			//double hitDistance = rayTrace.getHitPosition().clone().subtract(heldLoc.toVector()).length();
+			//grabber.sendMessage("diff: " + hitDistance);
+			
 			//Vector hitPosition  = rayTrace.getHitPosition();
 			// TODO
 			//grabber.sendMessage("block=" + rayTrace.getHitBlock() + ",position=" + rayTrace.getHitPosition());
@@ -483,9 +510,9 @@ public class MobController implements Listener
 			
 			Vector offset = userDirection.clone().normalize();
 			
-			offset.setX(offset.getX() * 0.3);
+			offset.setX(offset.getX() * (grabbed.getWidth() / 2));
 			offset.setY(offset.getY() * (grabbed.getHeight() / 2));
-			offset.setZ(offset.getZ() * 0.3);
+			offset.setZ(offset.getZ() * (grabbed.getWidth() / 2));
 			
 			hitPosition.subtract(offset);
 			

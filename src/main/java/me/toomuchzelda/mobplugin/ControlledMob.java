@@ -89,7 +89,10 @@ public class ControlledMob implements Listener
 		_mount.setMarker(true);
 		*/
 		
-		_cloud = (AreaEffectCloud) _controlled.getWorld().spawnEntity(_grabber.getLocation()/*.subtract(0, 1000, 0)*/, EntityType.AREA_EFFECT_CLOUD);
+		//spawn it under world so particles don't show before setting no particles
+		Location cloudSpawnLoc = _grabber.getLocation();
+		cloudSpawnLoc.setY(-1);
+		_cloud = (AreaEffectCloud) _controlled.getWorld().spawnEntity(cloudSpawnLoc/*.subtract(0, 1000, 0)*/, EntityType.AREA_EFFECT_CLOUD);
 		//_cloud.setDuration(Integer.MAX_VALUE - 1);
 		_cloud.setDurationOnUse(0);
 		_cloud.setRadius(0.1f);
