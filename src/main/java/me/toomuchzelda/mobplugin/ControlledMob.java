@@ -22,6 +22,7 @@ import org.bukkit.util.BoundingBox;
 import org.bukkit.util.Vector;
 
 import net.md_5.bungee.api.ChatColor;
+import org.spigotmc.event.entity.EntityDismountEvent;
 
 /**
  * @author toomuchzelda
@@ -500,6 +501,41 @@ public class ControlledMob implements Listener
 			{
 				this.setBackpack();
 				//_grabber.sendMessage("setBP");
+			}
+		}
+	}
+	
+	@EventHandler
+	public void onDismount(EntityDismountEvent event)
+	{
+		if(event.getEntity() == _controlled)
+		{
+			if(_controlled instanceof Player)
+			{
+				Player p = (Player) _controlled;
+				if(p.isInWater() && !p.isSneaking())
+				{
+					//_grabber.sendMessage("player in water, cancelled");
+					event.setCancelled(true);
+				}
+				else if(p.isSneaking())
+				{
+					if(MobController.disablePlayerDismount)
+						event.setCancelled(true);
+					else
+					{
+						//_grabber.sendMessage("voluntarily sneaked to dismount");
+						MobController.setNotControlling(_grabber);
+					}
+				}
+			}
+			else
+			{
+				if(_controlled.isInWater())
+				{
+					//_grabber.sendMessage("livent in water, cancelled");
+					event.setCancelled(true);
+				}
 			}
 		}
 	}

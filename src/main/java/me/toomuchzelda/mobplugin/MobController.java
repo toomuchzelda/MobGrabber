@@ -60,6 +60,7 @@ public class MobController implements Listener
 	
 	public static boolean allowedPlayerGrab = true;
 	public static boolean forcePlayerGrabs = false;
+	public static boolean disablePlayerDismount = false;
 	
 	public MobController(MobPlugin plugin, FileConfiguration config)
 	{
@@ -78,6 +79,8 @@ public class MobController implements Listener
 		Bukkit.getLogger().info("Allowed Grabbing Players: " + allowedPlayerGrab);
 		forcePlayerGrabs = config.getBoolean(MobPlugin.forcePlayerGrabConfig);
 		Bukkit.getLogger().info("Ignoring player grab consent: " + forcePlayerGrabs);
+		disablePlayerDismount = config.getBoolean(MobPlugin.disablePlayerDismount);
+		Bukkit.getLogger().info("Disabling players dismounting willingly: " + disablePlayerDismount);
 		
 		MobPlugin.getMobPlugin().getServer().getPluginManager().registerEvents(this, plugin);
 		
@@ -894,36 +897,39 @@ public class MobController implements Listener
 	}
 	*/
 	
+	/*
 	@EventHandler
 	public void onDismount(EntityDismountEvent event)
 	{
 		//only players can dismount willingly
-		if(event.getEntity() instanceof Player)
+		if(event.getEntity() instanceof LivingEntity livent && isControlled(livent))
 		{
-			Player p = (Player) event.getEntity();
-			
-			if(p.isInWater() && !p.isSneaking())
-				event.setCancelled(true);
-			else if(p.isSneaking())
+			if (event.getEntity() instanceof Player)
 			{
-				//Bukkit.broadcastMessage("dismounted sneaking in water");
-				freeIfControlled(p);
+				Player p = (Player) event.getEntity();
 				
-				//avoid cancelling event
-				return;
+				if (p.isInWater() && !p.isSneaking())
+					event.setCancelled(true);
+				else if (p.isSneaking())
+				{
+					//Bukkit.broadcastMessage("dismounted sneaking in water");
+					freeIfControlled(p);
+					
+				}
+				//cancel if they're dismounting coz of entering water,
+				//but not if they're sneaking (voluntarily leaving)
+				//Bukkit.broadcastMessage("cancelled event");
 			}
-			//cancel if they're dismounting coz of entering water,
-			//but not if they're sneaking (voluntarily leaving)
-			//Bukkit.broadcastMessage("cancelled event");
-		}
-		else
-		{
-			if(event.getEntity().isInWater())
+			else
 			{
-				event.setCancelled(true);
+				if (event.getEntity().isInWater())
+				{
+					event.setCancelled(true);
+				}
 			}
 		}
 	}
+	 */
 	
 	
 	@EventHandler

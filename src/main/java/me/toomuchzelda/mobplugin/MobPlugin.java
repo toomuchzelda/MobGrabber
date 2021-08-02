@@ -31,6 +31,7 @@ public final class MobPlugin extends JavaPlugin
 	public static final String allowBpConfig = "allow-backpack";
 	public static final String allowGrabPlayersConfig = "allow-grabbing-players";
 	public static final String forcePlayerGrabConfig = "ignore-player-grab-consent";
+	public static final String disablePlayerDismount = "disable-player-dismount";
 	public static NamespacedKey consentKey;
 	
 	@Override
@@ -47,6 +48,7 @@ public final class MobPlugin extends JavaPlugin
 		config.addDefault(allowBpConfig, true);
 		config.addDefault(allowGrabPlayersConfig, true);
 		config.addDefault(forcePlayerGrabConfig, false);
+		config.addDefault(disablePlayerDismount, false);
 
 		config.options().copyDefaults(true);
 		saveConfig();
