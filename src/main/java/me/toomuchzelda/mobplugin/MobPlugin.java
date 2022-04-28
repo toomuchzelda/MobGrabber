@@ -73,7 +73,7 @@ public final class MobPlugin extends JavaPlugin
 		{
 			if(args.length == 0)
 			{
-				sender.sendMessage(ChatColor.YELLOW + "Type /mbg help for info on how to use");
+				sender.sendMessage(ChatColor.YELLOW + "Type /mbc help for info on how to use");
 			}
 			else if(args.length > 0)
 			{
@@ -162,7 +162,7 @@ public final class MobPlugin extends JavaPlugin
 							+ "The crafting recipe, holding distances, allowing riding, allowing grabbing players,"
 							+ " and who can use the /mbc give command can be changed in plugins/MobPlugin"
 							+ "/config.yml");
-					sender.sendMessage("Plugin created by toomuchzelda\nThank you!");
+					sender.sendMessage(ChatColor.GREEN + "Plugin created by toomuchzelda\nThank you!");
 				}
 			}
 		}

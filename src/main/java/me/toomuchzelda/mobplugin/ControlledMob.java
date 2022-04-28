@@ -7,7 +7,7 @@ import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Particle;
 import org.bukkit.block.Block;
-import org.bukkit.craftbukkit.v1_17_R1.entity.CraftAreaEffectCloud;
+import org.bukkit.craftbukkit.v1_18_R2.entity.CraftAreaEffectCloud;
 import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.HandlerList;
@@ -492,12 +492,12 @@ public class ControlledMob implements Listener
 	{
 		if(MobController.isAllowedBp())
 		{
-			if(event.getMainHandItem().equals(MobController._controllerItem) && this.isBackpack())
+			if(event.getMainHandItem().isSimilar(MobController._controllerItem) && this.isBackpack())
 			{
 				this.setNotBackpack();
 				//_grabber.sendMessage("setnotBP");
 			}
-			else if(event.getOffHandItem().equals(MobController._controllerItem) && !this.isBackpack())
+			else if(event.getOffHandItem().isSimilar(MobController._controllerItem) && !this.isBackpack())
 			{
 				this.setBackpack();
 				//_grabber.sendMessage("setBP");

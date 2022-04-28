@@ -1,11 +1,11 @@
 name: MobPlugin
 main: me.toomuchzelda.mobplugin.MobPlugin
-version: 1.0.1
-api-version: 1.17
+version: 1.0.2
+api-version: 1.18
 commands:
  mobgrabber:
   description: MobGrabber stuff
-  aliases: mbg
+  aliases: mbc
   usage: /<command> help
 
 permissions:
